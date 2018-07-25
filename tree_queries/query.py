@@ -20,11 +20,16 @@ class TreeQuery(Query):
 
 class TreeCompiler(SQLCompiler):
     CTE = """
-    WITH RECURSIVE {cte_table} ("{depth}", "{path}", "{ordering}", "{pk}") AS (
+    WITH RECURSIVE tree_table (
+        "tree_depth",
+        "tree_path",
+        "tree_ordering",
+        "tree_pk"
+    ) AS (
         SELECT
-            1 AS depth,
-            array[T.{pk_path}] AS {path},
-            array[{order}] AS {ordering},
+            1 AS tree_depth,
+            array[T.{pk}] AS tree_path,
+            array[{order_by}] AS tree_ordering,
             T."{pk}"
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -32,30 +37,24 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
-            {cte_table}.{depth} + 1 AS {depth},
-            {cte_table}.{path} || T.{pk_path},
-            {cte_table}.{ordering} || {order},
+            tree_table.tree_depth + 1 AS tree_depth,
+            tree_table.tree_path || T.{pk},
+            tree_table.tree_ordering || {order_by},
             T."{pk}"
         FROM {db_table} T
-        JOIN {cte_table} ON T."{parent}" = {cte_table}."{pk}"
+        JOIN tree_table ON T."{parent}" = tree_table.tree_pk
     )
     """
 
     def as_sql(self, *args, **kwargs):
-        pk_path = self.query.model._meta.pk.attname
         params = {
-            "cte_table": "cte_table",
-            "depth": "depth",
-            "path": "cte_path",
             "parent": "parent_id",
             "pk": self.query.model._meta.pk.attname,
-            "pk_path": pk_path,
             "db_table": self.query.model._meta.db_table,
-            "ordering": "ordering",
-            "order": "position",
+            "order_by": "position",
         }
 
-        if params["cte_table"] not in self.query.extra_tables:
+        if "tree_table" not in self.query.extra_tables:
 
             def __maybe_alias(table):
                 return (
@@ -66,22 +65,16 @@ class TreeCompiler(SQLCompiler):
 
             self.query.add_extra(
                 select={
-                    "depth": "{cte_table}.{depth}".format(**params),
-                    "cte_path": "{cte_table}.{path}".format(**params),
-                    "ordering": "{cte_table}.{ordering}".format(**params),
+                    "tree_depth": "tree_table.tree_depth",
+                    "tree_path": "tree_table.tree_path",
+                    "tree_ordering": "tree_table.tree_ordering",
                 },
                 select_params=None,
-                where=['{cte_table}."{pk}" = {db_table}."{pk}"'.format(**params)],
+                where=['tree_table.tree_pk = {db_table}."{pk}"'.format(**params)],
                 params=None,
-                tables=[params["cte_table"]],
-                order_by=["ordering"],
+                tables=["tree_table"],
+                order_by=["tree_ordering"],
             )
-
-        # cte_columns = (
-        #     "depth",
-        #     "cte_path",
-        #     # "ordering",
-        # )
 
         sql = super().as_sql(*args, **kwargs)
         return ("".join([self.CTE.format(**params), sql[0]]), sql[1])
@@ -109,6 +102,6 @@ class TreeBase(models.Model):
     def ancestors(self):
         return (
             self.__class__.objects.with_tree_fields()
-            .filter(id__in=self.cte_path)
-            .order_by("depth")
+            .filter(id__in=self.tree_path)
+            .order_by("tree_depth")
         )
