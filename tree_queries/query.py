@@ -27,7 +27,7 @@ class TreeCompiler(SQLCompiler):
         "tree_pk"
     ) AS (
         SELECT
-            1 AS tree_depth,
+            0 AS tree_depth,
             array[T.{pk}] AS tree_path,
             array[{order_by}] AS tree_ordering,
             T."{pk}"

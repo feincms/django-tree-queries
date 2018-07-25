@@ -10,5 +10,5 @@ class Test(TestCase):
         self.assertEqual(len(Model.objects.with_tree_fields()), 1)
 
         instance = Model.objects.with_tree_fields().get()
-        self.assertEqual(instance.tree_depth, 1)
+        self.assertEqual(instance.tree_depth, 0)
         self.assertEqual(instance.tree_path, [instance.pk])
