@@ -1,10 +1,12 @@
 sudo: false
-# cache: pip
+cache: pip
 language: python
 python:
 - "3.6"
 - "3.5"
 - "3.4"
+addons:
+  postgresql: "9.4"
 env:
 - REQ="Django>=1.11,<2.0"
 - REQ="Django>=2.0,<2.1"
@@ -20,7 +22,7 @@ matrix:
       env: REQ="Django==2.1rc1"
 install:
 - pip install -U pip wheel
-- pip install $REQ
+- pip install $REQ psycopg2-binary
 - python setup.py install
 script: cd tests && ./manage.py test testapp && cd ..
 

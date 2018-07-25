@@ -12,13 +12,13 @@ def read(filename):
 
 
 setup(
-    name='django-translated-fields',
+    name='django-tree-queries',
     version=__import__('tree_queries').__version__,
-    description='Model translation for Django without magic-inflicted pain',
+    description='Tree queries with explicit opt-in, without configurability',
     long_description=read('README.rst'),
     author='Matthias Kestenholz',
     author_email='mk@feinheit.ch',
-    url='https://github.com/matthiask/django-translated-fields/',
+    url='https://github.com/matthiask/django-tree-queries/',
     license='BSD License',
     platforms=['OS Independent'],
     packages=find_packages(
@@ -39,7 +39,6 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development',
-        'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
     zip_safe=False,
     install_requires=[
