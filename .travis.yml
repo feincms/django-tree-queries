@@ -1,0 +1,34 @@
+sudo: false
+# cache: pip
+language: python
+python:
+- "3.6"
+- "3.5"
+- "3.4"
+env:
+- REQ="Django>=1.11,<2.0"
+- REQ="Django>=2.0,<2.1"
+- REQ="Django==2.1rc1"
+- REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+matrix:
+  allow_failures:
+    - env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+  exclude:
+    - python: "3.4"
+      env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+    - python: "3.4"
+      env: REQ="Django==2.1rc1"
+install:
+- pip install -U pip wheel
+- pip install $REQ
+- python setup.py install
+script: cd tests && ./manage.py test testapp && cd ..
+
+jobs:
+  include:
+    - stage: style
+      env: REQ=none
+      install: skip
+      script:
+        - pip install flake8
+        - flake8 .
