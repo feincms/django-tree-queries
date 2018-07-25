@@ -1,7 +1,9 @@
 import os
 
 
-DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+DATABASES = {
+    "default": {"ENGINE": "django.db.backends.postgresql", "NAME": "tree-queries"}
+}
 
 INSTALLED_APPS = [
     "django.contrib.auth",
