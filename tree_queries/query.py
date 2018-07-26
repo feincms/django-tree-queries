@@ -50,11 +50,13 @@ class TreeCompiler(SQLCompiler):
     """
 
     def as_sql(self, *args, **kwargs):
+        opts = self.query.model._meta
+
         params = {
             "parent": "parent_id",
-            "pk": self.query.model._meta.pk.attname,
-            "db_table": self.query.model._meta.db_table,
-            "order_by": "position",
+            "pk": opts.pk.attname,
+            "db_table": opts.db_table,
+            "order_by": opts.ordering[0] if opts.ordering else "pk",
         }
 
         if "tree_table" not in self.query.extra_tables:
