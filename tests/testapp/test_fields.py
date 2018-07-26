@@ -58,3 +58,11 @@ class Test(TestCase):
             list(tree.child2.descendants(include_self=True)),
             [tree.child2, tree.child2_1, tree.child2_2],
         )
+
+    def test_queryset_or(self):
+        tree = self.create_tree()
+        qs = Model.objects.with_tree_fields()
+        self.assertEqual(
+            list(qs.filter(pk=tree.child1.pk) | qs.filter(pk=tree.child2.pk)),
+            [tree.child1, tree.child2],
+        )
