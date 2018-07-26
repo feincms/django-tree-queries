@@ -115,6 +115,8 @@ TreeManager = TreeManagerBase.from_queryset(TreeQuerySet)
 
 
 class TreeBase(models.Model):
+    objects = TreeManager()
+
     class Meta:
         abstract = True
 

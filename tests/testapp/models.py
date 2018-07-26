@@ -1,6 +1,6 @@
 from django.db import models
 
-from tree_queries.query import TreeManager, TreeBase
+from tree_queries.query import TreeBase
 
 
 class Model(TreeBase):
@@ -9,5 +9,3 @@ class Model(TreeBase):
     )
     position = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=100)
-
-    objects = TreeManager()
