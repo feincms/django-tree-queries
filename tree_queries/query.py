@@ -99,9 +99,18 @@ class TreeBase(models.Model):
     class Meta:
         abstract = True
 
-    def ancestors(self):
+    def ancestors(self, *, include_self=False):
+        ids = self.tree_path if include_self else self.tree_path[:-1]
         return (
             self.__class__.objects.with_tree_fields()
-            .filter(id__in=self.tree_path)
+            .filter(id__in=ids)
             .order_by("tree_depth")
         )
+
+    def descendants(self, *, include_self=False):
+        queryset = self.__class__.objects.with_tree_fields().extra(
+            where=["{pk} = ANY(tree_table.tree_path)".format(pk=self.pk)]
+        )
+        if not include_self:
+            return queryset.exclude(pk=self.pk)
+        return queryset
