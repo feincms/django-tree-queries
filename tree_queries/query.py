@@ -11,7 +11,7 @@ class TreeQuery(Query):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
             raise ValueError("Need either using or connection")
-        if connection is None:  # pragma: no branch
+        if connection is None:  # pragma: no branch - how would this happen?
             connection = connections[using]
         return TreeCompiler(self, connection, using)
 
@@ -46,7 +46,8 @@ class TreeCompiler(SQLCompiler):
 
     def as_sql(self, *args, **kwargs):
 
-        if self.query._annotations and any(
+        if self.query._annotations and any(  # pragma: no branch
+            # OK if generator is not consumed completely
             True
             for alias, annotation in self.query._annotations.items()
             if annotation.is_summary
@@ -63,7 +64,7 @@ class TreeCompiler(SQLCompiler):
             "order_by": opts.ordering[0] if opts.ordering else "pk",
         }
 
-        if "tree_table" not in self.query.extra_tables:  # pragma: no branch
+        if "tree_table" not in self.query.extra_tables:  # pragma: no branch - unlikely
             self.query.add_extra(
                 select={
                     "tree_depth": "tree_table.tree_depth",
