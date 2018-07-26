@@ -7,12 +7,6 @@ __all__ = ("TreeQuerySet", "TreeManager", "TreeBase")
 
 
 class TreeQuery(Query):
-    def chain(self, klass=None):
-        assert (
-            klass is None
-        ), "Cannot change query type after with_tree_fields()"  # noqa
-        return super().chain(TreeQuery)
-
     def get_compiler(self, using=None, connection=None):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
@@ -51,6 +45,15 @@ class TreeCompiler(SQLCompiler):
     """
 
     def as_sql(self, *args, **kwargs):
+
+        if self.query._annotations and any(
+            True
+            for alias, annotation in self.query._annotations.items()
+            if annotation.is_summary
+        ):
+            # No CTEs for summary queries
+            return super().as_sql(*args, **kwargs)
+
         opts = self.query.model._meta
 
         params = {

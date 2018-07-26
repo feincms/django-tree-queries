@@ -71,9 +71,18 @@ class Test(TestCase):
     def test_twice(self):
         self.assertEqual(list(Model.objects.with_tree_fields().with_tree_fields()), [])
 
-    def test_boring(self):
+    def test_boring_coverage(self):
         # Does nothing except raise coverage
         Model.objects._ensure_parameters()
 
         with self.assertRaises(ValueError):
             TreeQuery(Model).get_compiler()
+
+    def test_count(self):
+        self.create_tree()
+        self.assertEqual(Model.objects.count(), 6)
+        self.assertEqual(Model.objects.with_tree_fields().count(), 6)
+
+    def test_update(self):
+        self.create_tree()
+        Model.objects.with_tree_fields().update(position=3)
