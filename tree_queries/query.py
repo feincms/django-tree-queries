@@ -3,6 +3,9 @@ from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
 
+__all__ = ("TreeQuerySet", "TreeManager", "TreeBase")
+
+
 class TreeQuery(Query):
     def chain(self, klass=None):
         assert (

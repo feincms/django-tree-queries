@@ -1,8 +1,7 @@
-VERSION = (0, 5, 0)
+VERSION = (0, 1, 0)
 __version__ = ".".join(map(str, VERSION))
 
 try:
-    from .admin import *  # noqa
-    from .fields import *  # noqa
+    from .query import *  # noqa
 except ImportError:  # pragma: no cover
     pass
