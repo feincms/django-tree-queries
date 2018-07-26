@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
@@ -14,9 +14,10 @@ class TreeQuery(Query):
         return super().chain(TreeQuery)
 
     def get_compiler(self, using=None, connection=None):
-        if connection is None:
-            from django.db import connections
-
+        # Copied from django/db/models/sql/query.py
+        if using is None and connection is None:
+            raise ValueError("Need either using or connection")
+        if connection is None:  # pragma: no branch
             connection = connections[using]
         return TreeCompiler(self, connection, using)
 
@@ -59,15 +60,7 @@ class TreeCompiler(SQLCompiler):
             "order_by": opts.ordering[0] if opts.ordering else "pk",
         }
 
-        if "tree_table" not in self.query.extra_tables:
-
-            def __maybe_alias(table):
-                return (
-                    self.query.table_map[table][0]
-                    if table in self.query.table_map
-                    else table
-                )
-
+        if "tree_table" not in self.query.extra_tables:  # pragma: no branch
             self.query.add_extra(
                 select={
                     "tree_depth": "tree_table.tree_depth",

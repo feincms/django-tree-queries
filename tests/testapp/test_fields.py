@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 from django.test import TestCase
 
+from tree_queries.query import TreeQuery
 from .models import Model
 
 
@@ -66,3 +67,13 @@ class Test(TestCase):
             list(qs.filter(pk=tree.child1.pk) | qs.filter(pk=tree.child2.pk)),
             [tree.child1, tree.child2],
         )
+
+    def test_twice(self):
+        self.assertEqual(list(Model.objects.with_tree_fields().with_tree_fields()), [])
+
+    def test_boring(self):
+        # Does nothing except raise coverage
+        Model.objects._ensure_parameters()
+
+        with self.assertRaises(ValueError):
+            TreeQuery(Model).get_compiler()
