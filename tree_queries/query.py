@@ -48,9 +48,8 @@ class TreeCompiler(SQLCompiler):
 
         if self.query._annotations and any(  # pragma: no branch
             # OK if generator is not consumed completely
-            True
+            annotation.is_summary
             for alias, annotation in self.query._annotations.items()
-            if annotation.is_summary
         ):
             # No CTEs for summary queries
             return super().as_sql(*args, **kwargs)
