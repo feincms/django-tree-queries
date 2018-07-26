@@ -88,6 +88,22 @@ class TreeQuerySet(models.QuerySet):
         self.query.__class__ = TreeQuery
         return self
 
+    def ancestors(self, of, *, include_self=True):
+        ids = of.tree_path if include_self else of.tree_path[:-1]
+        return (
+            self.with_tree_fields()  # TODO tree fields not strictly required
+            .filter(id__in=ids)
+            .order_by("tree_depth")
+        )
+
+    def descendants(self, of, *, include_self=True):
+        queryset = self.with_tree_fields().extra(
+            where=["{pk} = ANY(tree_table.tree_path)".format(pk=of.pk)]
+        )
+        if not include_self:
+            return queryset.exclude(pk=of.pk)
+        return queryset
+
 
 class TreeManagerBase(models.Manager):
     def _ensure_parameters(self):
@@ -103,17 +119,11 @@ class TreeBase(models.Model):
         abstract = True
 
     def ancestors(self, *, include_self=False):
-        ids = self.tree_path if include_self else self.tree_path[:-1]
-        return (
-            self.__class__.objects.with_tree_fields()
-            .filter(id__in=ids)
-            .order_by("tree_depth")
+        return self.__class__._default_manager.ancestors(
+            self, include_self=include_self
         )
 
     def descendants(self, *, include_self=False):
-        queryset = self.__class__.objects.with_tree_fields().extra(
-            where=["{pk} = ANY(tree_table.tree_path)".format(pk=self.pk)]
+        return self.__class__._default_manager.descendants(
+            self, include_self=include_self
         )
-        if not include_self:
-            return queryset.exclude(pk=self.pk)
-        return queryset
