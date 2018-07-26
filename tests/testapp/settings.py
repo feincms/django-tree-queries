@@ -6,13 +6,13 @@ DATABASES = {
 }
 
 INSTALLED_APPS = [
-    "django.contrib.auth",
-    "django.contrib.admin",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.staticfiles",
-    "django.contrib.messages",
-    "testapp",
+    # "django.contrib.auth",
+    # "django.contrib.admin",
+    # "django.contrib.contenttypes",
+    # "django.contrib.sessions",
+    # "django.contrib.staticfiles",
+    # "django.contrib.messages",
+    "testapp"
 ]
 
 MEDIA_ROOT = "/media/"
