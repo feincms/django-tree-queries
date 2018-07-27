@@ -122,7 +122,11 @@ class TreeCompiler(SQLCompiler):
             )
 
         sql = super().as_sql(*args, **kwargs)
-        CTE = self.CTE_SQLITE3
+        CTE = {
+            "postgresql": self.CTE_POSTGRESQL,
+            "sqlite": self.CTE_SQLITE3,
+            "mysql": self.CTE_MYSQL,
+        }[self.connection.vendor]
         return ("".join([CTE.format(**params), sql[0]]), sql[1])
 
     def get_converters(self, expressions):
@@ -160,10 +164,17 @@ class TreeQuerySet(models.QuerySet):
         )
 
     def descendants(self, of, *, include_self=True):
-        queryset = self.with_tree_fields().extra(
-            # where=["{pk} = ANY(tree_path)".format(pk=of.pk)]
-            where=['instr(tree_path, "x{:09x}") <> 0'.format(of.pk)]
-        )
+        connection = connections[self.db]
+        if connection.vendor == "postgresql":
+            queryset = self.with_tree_fields().extra(
+                where=["{pk} = ANY(tree_path)".format(pk=of.pk)]
+            )
+
+        else:
+            queryset = self.with_tree_fields().extra(
+                where=['instr(tree_path, "x{:09x}") <> 0'.format(of.pk)]
+            )
+
         if not include_self:
             return queryset.exclude(pk=of.pk)
         return queryset
