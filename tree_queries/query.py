@@ -17,7 +17,7 @@ class TreeQuery(Query):
 
 
 class TreeCompiler(SQLCompiler):
-    CTE = """
+    CTE_POSTGRESQL = """
     WITH RECURSIVE __tree (
         "tree_depth",
         "tree_path",
@@ -38,6 +38,28 @@ class TreeCompiler(SQLCompiler):
             __tree.tree_depth + 1 AS tree_depth,
             __tree.tree_path || T.{pk},
             __tree.tree_ordering || {order_by},
+            T."{pk}"
+        FROM {db_table} T
+        JOIN __tree ON T."{parent}" = __tree.tree_pk
+    )
+    """
+
+    CTE_SQLITE3 = """
+    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+        SELECT
+            0 tree_depth,
+            printf("x%09x", {pk}) tree_path,
+            printf("x%09x", {order_by}) tree_ordering,
+            T."{pk}" tree_pk
+        FROM {db_table} T
+        WHERE T."{parent}" IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1,
+            __tree.tree_path || printf("x%09x", T.{pk}),
+            __tree.tree_ordering || printf("x%09x", T.{order_by}),
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -78,7 +100,25 @@ class TreeCompiler(SQLCompiler):
             )
 
         sql = super().as_sql(*args, **kwargs)
-        return ("".join([self.CTE.format(**params), sql[0]]), sql[1])
+        CTE = self.CTE_SQLITE3
+        return ("".join([CTE.format(**params), sql[0]]), sql[1])
+
+    def get_converters(self, expressions):
+        converters = super().get_converters(expressions)
+        for i, expression in enumerate(expressions):
+            if any(f in str(expression) for f in ("tree_path", "tree_ordering")):
+                converters[i] = ([converter], expression)
+        return converters
+
+
+def converter(value, expression, connection):
+    if not isinstance(value, str):
+        return value
+    array = []
+    while value:
+        array.append(int(value[1:10], 16))
+        value = value[10:]
+    return array
 
 
 class TreeQuerySet(models.QuerySet):
@@ -99,7 +139,8 @@ class TreeQuerySet(models.QuerySet):
 
     def descendants(self, of, *, include_self=True):
         queryset = self.with_tree_fields().extra(
-            where=["{pk} = ANY(tree_path)".format(pk=of.pk)]
+            # where=["{pk} = ANY(tree_path)".format(pk=of.pk)]
+            where=['instr(tree_path, "x{:09x}") <> 0'.format(of.pk)]
         )
         if not include_self:
             return queryset.exclude(pk=of.pk)
