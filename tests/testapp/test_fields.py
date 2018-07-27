@@ -50,6 +50,7 @@ class Test(TestCase):
             list(child2_2.ancestors(include_self=True)),
             [tree.root, tree.child2, tree.child2_2],
         )
+        self.assertEqual(list(child2_2.ancestors().reverse()), [tree.child2, tree.root])
 
     def test_descendants(self):
         tree = self.create_tree()

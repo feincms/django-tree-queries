@@ -87,7 +87,7 @@ class TreeQuerySet(models.QuerySet):
         return self
 
     def ancestors(self, of, *, include_self=True):
-        if not hasattr(of, 'tree_path'):
+        if not hasattr(of, "tree_path"):
             of = self.with_tree_fields().get(pk=of.pk)
 
         ids = of.tree_path if include_self else of.tree_path[:-1]
