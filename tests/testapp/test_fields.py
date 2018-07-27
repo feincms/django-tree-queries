@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from django.db.models import Count
 from django.test import TestCase
 
 from tree_queries.query import TreeQuery
@@ -82,6 +83,23 @@ class Test(TestCase):
         self.create_tree()
         self.assertEqual(Model.objects.count(), 6)
         self.assertEqual(Model.objects.with_tree_fields().count(), 6)
+
+    def test_annotate(self):
+        tree = self.create_tree()
+        self.assertEqual(
+            [
+                (node, node.children__count, node.tree_depth)
+                for node in Model.objects.with_tree_fields().annotate(Count("children"))
+            ],
+            [
+                (tree.root, 2, 0),
+                (tree.child1, 1, 1),
+                (tree.child1_1, 0, 2),
+                (tree.child2, 2, 1),
+                (tree.child2_1, 0, 2),
+                (tree.child2_2, 0, 2),
+            ],
+        )
 
     def test_update(self):
         self.create_tree()
