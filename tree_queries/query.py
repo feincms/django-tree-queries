@@ -44,6 +44,28 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
+    CTE_MYSQL = """
+    WITH RECURSIVE __tree AS (
+        SELECT
+            0 AS tree_depth,
+            CONCAT("x", LPAD(HEX({pk}), 9, "0")) AS tree_path,
+            CONCAT("x", LPAD(HEX({order_by}), 9, "0")) AS tree_ordering,
+            T."{pk}" AS tree_pk
+        FROM {db_table} T
+        WHERE T."{parent}" IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1,
+            CONCAT(__tree.tree_path, "x", LPAD(HEX(T.{pk}), 9, "0")),
+            CONCAT(__tree.tree_ordering, "x", LPAD(HEX(T.{order_by}), 9, "0")),
+            T."{pk}"
+        FROM {db_table} T
+        JOIN __tree ON T."{parent}" = __tree.tree_pk
+    )
+    """
+
     CTE_SQLITE3 = """
     WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
