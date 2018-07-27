@@ -60,7 +60,7 @@ class TreeCompiler(SQLCompiler):
             "parent": "parent_id",
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
-            "order_by": opts.ordering[0] if opts.ordering else "pk",
+            "order_by": opts.ordering[0] if opts.ordering else opts.pk.attname,
         }
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
