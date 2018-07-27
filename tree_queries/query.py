@@ -18,7 +18,7 @@ class TreeQuery(Query):
 
 class TreeCompiler(SQLCompiler):
     CTE = """
-    WITH RECURSIVE tree_table (
+    WITH RECURSIVE __tree (
         "tree_depth",
         "tree_path",
         "tree_ordering",
@@ -35,12 +35,12 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
-            tree_table.tree_depth + 1 AS tree_depth,
-            tree_table.tree_path || T.{pk},
-            tree_table.tree_ordering || {order_by},
+            __tree.tree_depth + 1 AS tree_depth,
+            __tree.tree_path || T.{pk},
+            __tree.tree_ordering || {order_by},
             T."{pk}"
         FROM {db_table} T
-        JOIN tree_table ON T."{parent}" = tree_table.tree_pk
+        JOIN __tree ON T."{parent}" = __tree.tree_pk
     )
     """
 
@@ -63,17 +63,17 @@ class TreeCompiler(SQLCompiler):
             "order_by": opts.ordering[0] if opts.ordering else "pk",
         }
 
-        if "tree_table" not in self.query.extra_tables:  # pragma: no branch - unlikely
+        if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             self.query.add_extra(
                 select={
-                    "tree_depth": "tree_table.tree_depth",
-                    "tree_path": "tree_table.tree_path",
-                    "tree_ordering": "tree_table.tree_ordering",
+                    "tree_depth": "__tree.tree_depth",
+                    "tree_path": "__tree.tree_path",
+                    "tree_ordering": "__tree.tree_ordering",
                 },
                 select_params=None,
-                where=['tree_table.tree_pk = {db_table}."{pk}"'.format(**params)],
+                where=['__tree.tree_pk = {db_table}."{pk}"'.format(**params)],
                 params=None,
-                tables=["tree_table"],
+                tables=["__tree"],
                 order_by=["tree_ordering"],
             )
 
@@ -96,7 +96,7 @@ class TreeQuerySet(models.QuerySet):
 
     def descendants(self, of, *, include_self=True):
         queryset = self.with_tree_fields().extra(
-            where=["{pk} = ANY(tree_table.tree_path)".format(pk=of.pk)]
+            where=["{pk} = ANY(tree_path)".format(pk=of.pk)]
         )
         if not include_self:
             return queryset.exclude(pk=of.pk)
