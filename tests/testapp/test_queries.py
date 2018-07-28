@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.test import TestCase
 
 from tree_queries.compiler import TreeQuery
@@ -108,6 +108,10 @@ class Test(TestCase):
             ],
         )
 
-    def test_update(self):
+    def test_update_aggregate(self):
         self.create_tree()
         Model.objects.with_tree_fields().update(position=3)
+        self.assertEqual(
+            Model.objects.with_tree_fields().aggregate(Sum("position")),
+            {"position__sum": 18},
+        )
