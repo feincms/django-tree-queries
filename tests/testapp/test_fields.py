@@ -10,12 +10,12 @@ from .models import Model
 class Test(TestCase):
     def create_tree(self):
         tree = SimpleNamespace()
-        tree.root = Model.objects.create()
-        tree.child1 = Model.objects.create(parent=tree.root, position=0)
-        tree.child2 = Model.objects.create(parent=tree.root, position=1)
-        tree.child1_1 = Model.objects.create(parent=tree.child1, position=0)
-        tree.child2_1 = Model.objects.create(parent=tree.child2, position=0)
-        tree.child2_2 = Model.objects.create(parent=tree.child2, position=1)
+        tree.root = Model.objects.create(name="root")
+        tree.child1 = Model.objects.create(parent=tree.root, position=0, name="1")
+        tree.child2 = Model.objects.create(parent=tree.root, position=1, name="2")
+        tree.child1_1 = Model.objects.create(parent=tree.child1, position=0, name="1-1")
+        tree.child2_1 = Model.objects.create(parent=tree.child2, position=0, name="2-1")
+        tree.child2_2 = Model.objects.create(parent=tree.child2, position=1, name="2-2")
         return tree
 
     def test_stuff(self):
@@ -84,9 +84,12 @@ class Test(TestCase):
             TreeQuery(Model).get_compiler()
 
     def test_count(self):
-        self.create_tree()
+        tree = self.create_tree()
         self.assertEqual(Model.objects.count(), 6)
         self.assertEqual(Model.objects.with_tree_fields().count(), 6)
+
+        self.assertEqual(list(Model.objects.descendants(tree.child1)), [tree.child1_1])
+        self.assertEqual(Model.objects.descendants(tree.child1).count(), 1)
 
     def test_annotate(self):
         tree = self.create_tree()

@@ -91,14 +91,11 @@ class TreeCompiler(SQLCompiler):
 
     def as_sql(self, *args, **kwargs):
 
-        if self.query._annotations and any(  # pragma: no branch
+        is_summary = self.query._annotations and any(  # pragma: no branch
             # OK if generator is not consumed completely
             annotation.is_summary
             for alias, annotation in self.query._annotations.items()
-        ):
-            # No CTEs for summary queries
-            return super().as_sql(*args, **kwargs)
-
+        )
         opts = self.query.model._meta
 
         params = {
@@ -110,7 +107,9 @@ class TreeCompiler(SQLCompiler):
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             self.query.add_extra(
-                select={
+                select={}
+                if is_summary
+                else {
                     "tree_depth": "__tree.tree_depth",
                     "tree_path": "__tree.tree_path",
                     "tree_ordering": "__tree.tree_ordering",
@@ -119,7 +118,7 @@ class TreeCompiler(SQLCompiler):
                 where=["__tree.tree_pk = {db_table}.{pk}".format(**params)],
                 params=None,
                 tables=["__tree"],
-                order_by=["tree_ordering"],
+                order_by=[] if is_summary else ["__tree.tree_ordering"],
             )
 
         sql = super().as_sql(*args, **kwargs)
@@ -154,7 +153,7 @@ class TreeQuerySet(models.QuerySet):
         self.query.__class__ = TreeQuery
         return self
 
-    def ancestors(self, of, *, include_self=True):
+    def ancestors(self, of, *, include_self=False):
         if not hasattr(of, "tree_path"):
             of = self.with_tree_fields().get(pk=of.pk)
 
@@ -162,19 +161,19 @@ class TreeQuerySet(models.QuerySet):
         return (
             self.with_tree_fields()  # TODO tree fields not strictly required
             .filter(id__in=ids)
-            .order_by("tree_depth")
+            .order_by("__tree.tree_depth")
         )
 
-    def descendants(self, of, *, include_self=True):
+    def descendants(self, of, *, include_self=False):
         connection = connections[self.db]
         if connection.vendor == "postgresql":
             queryset = self.with_tree_fields().extra(
-                where=["{pk} = ANY(tree_path)".format(pk=of.pk)]
+                where=["{pk} = ANY(__tree.tree_path)".format(pk=of.pk)]
             )
 
         else:
             queryset = self.with_tree_fields().extra(
-                where=['instr(tree_path, "x{:09x}") <> 0'.format(of.pk)]
+                where=['instr(__tree.tree_path, "x{:09x}") <> 0'.format(of.pk)]
             )
 
         if not include_self:
