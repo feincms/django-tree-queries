@@ -133,3 +133,6 @@ class Test(TestCase):
         self.assertEqual(
             cm.exception.messages, ["A node cannot be made a descendant of itself."]
         )
+
+        # No error.
+        tree.child1.full_clean()
