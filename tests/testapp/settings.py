@@ -3,13 +3,15 @@ import os
 
 DATABASES = {
     "default": {"ENGINE": "django.db.backends.postgresql", "NAME": "tree-queries"}
-    # "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
-    # "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
 }
 
 if os.environ.get("DB") == "mariadb":
     DATABASES = {
         "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
+    }
+elif os.environ.get("DB") == "sqlite3":
+    DATABASES = {
+        "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
     }
 
 INSTALLED_APPS = [

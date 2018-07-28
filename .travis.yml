@@ -40,6 +40,15 @@ jobs:
         - python setup.py install
       script:
         cd tests && ./manage.py test testapp && cd ..
+    - stage: sqlite3
+      env: DB=sqlite3
+      install:
+        - pip install -U pip wheel
+        - pip install "Django>=2.0,<2.1"
+        - python setup.py install
+      script:
+        python -c "import sqlite3;print(sqlite3.sqlite_version_info)"
+        cd tests && ./manage.py test testapp && cd ..
     - stage: style
       env: REQ=none
       install: skip
