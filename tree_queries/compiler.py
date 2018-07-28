@@ -118,7 +118,7 @@ class TreeCompiler(SQLCompiler):
                 order_by=(
                     []
                     if is_summary or self.query.extra_order_by
-                    else ["__tree.tree_ordering"]
+                    else ["__tree.tree_ordering"]  # DFS is the only true way
                 ),
             )
 
