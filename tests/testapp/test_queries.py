@@ -114,4 +114,6 @@ class Test(TestCase):
         self.assertEqual(
             Model.objects.with_tree_fields().aggregate(Sum("position")),
             {"position__sum": 18},
+            # TODO Sum("tree_depth") does not work because the field is not
+            # known yet.
         )
