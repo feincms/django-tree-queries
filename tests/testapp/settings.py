@@ -7,6 +7,11 @@ DATABASES = {
     # "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
 }
 
+if os.environ["DB"] == "mysql":
+    DATABASES = {
+        "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
+    }
+
 INSTALLED_APPS = [
     # "django.contrib.auth",
     # "django.contrib.admin",
