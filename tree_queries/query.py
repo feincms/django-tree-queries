@@ -148,6 +148,10 @@ def converter(value, expression, connection, context=None):
     return array
 
 
+def pk(of):
+    return of.pk if hasattr(of, "pk") else of
+
+
 class TreeQuerySet(models.QuerySet):
     def with_tree_fields(self):
         self.query.__class__ = TreeQuery
@@ -155,7 +159,7 @@ class TreeQuerySet(models.QuerySet):
 
     def ancestors(self, of, *, include_self=False):
         if not hasattr(of, "tree_path"):
-            of = self.with_tree_fields().get(pk=of.pk)
+            of = self.with_tree_fields().get(pk=pk(of))
 
         ids = of.tree_path if include_self else of.tree_path[:-1]
         return (
@@ -168,16 +172,16 @@ class TreeQuerySet(models.QuerySet):
         connection = connections[self.db]
         if connection.vendor == "postgresql":
             queryset = self.with_tree_fields().extra(
-                where=["{pk} = ANY(__tree.tree_path)".format(pk=of.pk)]
+                where=["{pk} = ANY(__tree.tree_path)".format(pk=pk(of))]
             )
 
         else:
             queryset = self.with_tree_fields().extra(
-                where=['instr(__tree.tree_path, "x{:09x}") <> 0'.format(of.pk)]
+                where=['instr(__tree.tree_path, "x{:09x}") <> 0'.format(pk(of))]
             )
 
         if not include_self:
-            return queryset.exclude(pk=of.pk)
+            return queryset.exclude(pk=pk(of))
         return queryset
 
 
