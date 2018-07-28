@@ -22,19 +22,24 @@ matrix:
       env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
     - python: "3.4"
       env: REQ="Django==2.1rc1"
-  include:
-    - python: "3.6"
-      env: DB="mysql"
-      addons:
-        mariadb: "10.3"
 install:
 - pip install -U pip wheel
-- pip install $REQ mysqlclient psycopg2-binary
+- pip install $REQ psycopg2-binary
 - python setup.py install
 script: cd tests && ./manage.py test testapp && cd ..
 
 jobs:
   include:
+    - stage: mariadb
+      env: DB=mysql
+      addons:
+        mariadb: "10.3"
+      install:
+        - pip install -U pip wheel
+        - pip install "Django>=2.0,<2.1" mysqlclient
+        - python setup.py install
+      script:
+        cd tests && ./manage.py test testapp && cd ..
     - stage: style
       env: REQ=none
       install: skip
