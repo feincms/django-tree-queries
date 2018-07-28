@@ -3,7 +3,8 @@ import os
 
 DATABASES = {
     # "default": {"ENGINE": "django.db.backends.postgresql", "NAME": "tree-queries"}
-    "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
+    # "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
+    "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
 }
 
 INSTALLED_APPS = [

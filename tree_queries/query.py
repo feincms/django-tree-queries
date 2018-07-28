@@ -45,24 +45,25 @@ class TreeCompiler(SQLCompiler):
     """
 
     CTE_MYSQL = """
-    WITH RECURSIVE __tree AS (
+    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
-            0 AS tree_depth,
-            CONCAT("x", LPAD(HEX({pk}), 9, "0")) AS tree_path,
-            CONCAT("x", LPAD(HEX({order_by}), 9, "0")) AS tree_ordering,
-            T."{pk}" AS tree_pk
+            0,
+            -- Limit to max. 10 levels...
+            CAST(CONCAT("x", LPAD(HEX({pk}), 9, "0")) AS char(100)),
+            CAST(CONCAT("x", LPAD(HEX({order_by}), 9, "0")) AS char(100)),
+            T.{pk}
         FROM {db_table} T
-        WHERE T."{parent}" IS NULL
+        WHERE T.{parent} IS NULL
 
         UNION ALL
 
         SELECT
             __tree.tree_depth + 1,
-            CONCAT(__tree.tree_path, "x", LPAD(HEX(T.{pk}), 9, "0")),
-            CONCAT(__tree.tree_ordering, "x", LPAD(HEX(T.{order_by}), 9, "0")),
-            T."{pk}"
-        FROM {db_table} T
-        JOIN __tree ON T."{parent}" = __tree.tree_pk
+            CONCAT(__tree.tree_path, "x", LPAD(HEX(T2.{pk}), 9, "0")),
+            CONCAT(__tree.tree_ordering, "x", LPAD(HEX(T2.{order_by}), 9, "0")),
+            T2.{pk}
+        FROM __tree, {db_table} T2
+        WHERE __tree.tree_pk = T2.{parent}
     )
     """
 
@@ -115,7 +116,7 @@ class TreeCompiler(SQLCompiler):
                     "tree_ordering": "__tree.tree_ordering",
                 },
                 select_params=None,
-                where=['__tree.tree_pk = {db_table}."{pk}"'.format(**params)],
+                where=["__tree.tree_pk = {db_table}.{pk}".format(**params)],
                 params=None,
                 tables=["__tree"],
                 order_by=["tree_ordering"],
