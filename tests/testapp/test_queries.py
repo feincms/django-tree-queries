@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Sum
 from django.test import TestCase
 
@@ -113,4 +114,22 @@ class Test(TestCase):
             {"position__sum": 18},
             # TODO Sum("tree_depth") does not work because the field is not
             # known yet.
+        )
+
+    def test_values(self):
+        tree = self.create_tree()
+        self.assertEqual(
+            list(
+                Model.objects.ancestors(tree.child2_1).values_list("parent", flat=True)
+            ),
+            [tree.root.parent_id, tree.child2.parent_id],
+        )
+
+    def test_loops(self):
+        tree = self.create_tree()
+        tree.root.parent_id = tree.child1.pk
+        with self.assertRaises(ValidationError) as cm:
+            tree.root.full_clean()
+        self.assertEqual(
+            cm.exception.messages, ["A node cannot be made a descendant of itself."]
         )
