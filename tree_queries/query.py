@@ -20,7 +20,7 @@ class TreeQuerySet(models.QuerySet):
         return (
             self.with_tree_fields()  # TODO tree fields not strictly required
             .filter(id__in=ids)
-            .order_by("__tree.tree_depth")
+            .extra(order_by=["__tree.tree_depth"])
         )
 
     def descendants(self, of, *, include_self=False):

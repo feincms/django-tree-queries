@@ -115,7 +115,11 @@ class TreeCompiler(SQLCompiler):
                 where=["__tree.tree_pk = {db_table}.{pk}".format(**params)],
                 params=None,
                 tables=["__tree"],
-                order_by=[] if is_summary else ["__tree.tree_ordering"],
+                order_by=(
+                    []
+                    if is_summary or self.query.extra_order_by
+                    else ["__tree.tree_ordering"]
+                ),
             )
 
         sql = super().as_sql(*args, **kwargs)
