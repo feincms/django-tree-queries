@@ -1,6 +1,6 @@
 from django.db import models
 
-from tree_queries.query import TreeNode
+from tree_queries.models import TreeNode
 
 
 class Model(TreeNode):
