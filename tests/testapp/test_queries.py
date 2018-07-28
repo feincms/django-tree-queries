@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from django.db.models import Count
 from django.test import TestCase
 
-from tree_queries.query import TreeQuery
+from tree_queries.compiler import TreeQuery
 from .models import Model
 
 
