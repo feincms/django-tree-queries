@@ -7,7 +7,7 @@ DATABASES = {
     # "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
 }
 
-if os.environ.get("DB") == "mysql":
+if os.environ.get("DB") == "mariadb":
     DATABASES = {
         "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
     }

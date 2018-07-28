@@ -31,7 +31,7 @@ script: cd tests && ./manage.py test testapp && cd ..
 jobs:
   include:
     - stage: mariadb
-      env: DB=mysql
+      env: DB=mariadb
       addons:
         mariadb: "10.3"
       install:
