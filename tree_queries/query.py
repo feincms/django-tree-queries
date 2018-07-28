@@ -138,7 +138,8 @@ class TreeCompiler(SQLCompiler):
         return converters
 
 
-def converter(value, expression, connection):
+def converter(value, expression, connection, context=None):
+    # context can be removed as soon as we only support Django>=2.0
     if not isinstance(value, str):
         return value
     array = []
