@@ -1,9 +1,9 @@
 from django.db import models
 
-from tree_queries.query import TreeBase
+from tree_queries.query import TreeNode
 
 
-class Model(TreeBase):
+class Model(TreeNode):
     parent = models.ForeignKey(
         "self", on_delete=models.CASCADE, related_name="children", blank=True, null=True
     )

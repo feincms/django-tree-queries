@@ -3,7 +3,7 @@ from django.db import connections, models
 from tree_queries.compiler import TreeQuery
 
 
-__all__ = ("TreeQuerySet", "TreeManager", "TreeBase")
+__all__ = ("TreeQuerySet", "TreeNode")
 
 
 def pk(of):
@@ -43,17 +43,8 @@ class TreeQuerySet(models.QuerySet):
         return queryset
 
 
-class TreeManagerBase(models.Manager):
-    def _ensure_parameters(self):
-        # Compatibility with django-cte-forest
-        pass
-
-
-TreeManager = TreeManagerBase.from_queryset(TreeQuerySet)
-
-
-class TreeBase(models.Model):
-    objects = TreeManager()
+class TreeNode(models.Model):
+    objects = TreeQuerySet.as_manager()
 
     class Meta:
         abstract = True

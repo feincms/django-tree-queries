@@ -77,9 +77,6 @@ class Test(TestCase):
         self.assertEqual(list(Model.objects.with_tree_fields().with_tree_fields()), [])
 
     def test_boring_coverage(self):
-        # Does nothing except raise coverage
-        Model.objects._ensure_parameters()
-
         with self.assertRaises(ValueError):
             TreeQuery(Model).get_compiler()
 
