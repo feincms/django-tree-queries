@@ -24,9 +24,7 @@ matrix:
       env: REQ="Django==2.1rc1"
   include:
     - python: "3.6"
-      env:
-        - REQ="Django>=2.0,<2.1"
-        - DB="mysql"
+      env: DB="mysql"
       addons:
         mariadb: "10.3"
 install:
