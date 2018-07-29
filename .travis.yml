@@ -13,16 +13,13 @@ env:
 - REQ="Django==2.1rc1"
 - REQ="https://github.com/django/django/archive/master.zip#egg=Django"
 matrix:
-  allow_failures:
-    - env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
-  include:
-    - python: "2.7"
-      env: REQ="Django>=1.11,<2.0"
   exclude:
-    - python: "3.4"
-      env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
-    - python: "3.4"
-      env: REQ="Django==2.1rc1"
+  - python: "3.4"
+    env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+  - python: "3.4"
+    env: REQ="Django==2.1rc1"
+  allow_failures:
+  - env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
 install:
 - pip install -U pip wheel
 - pip install $REQ psycopg2-binary
@@ -31,6 +28,9 @@ script: cd tests && ./manage.py test testapp && cd ..
 
 jobs:
   include:
+    - stage: prehistoric
+      python: "2.7"
+      env: REQ="Django>=1.11,<2.0"
     - stage: mariadb
       env: DB=mariadb
       addons:
