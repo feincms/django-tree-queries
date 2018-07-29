@@ -39,7 +39,9 @@ Usage
 
 - Install ``django-tree-queries`` using pip.
 - Extend ``tree_queries.models.TreeNode`` or build your own queryset
-  and/or manager using ``tree_queries.query.TreeQuerySet``.
+  and/or manager using ``tree_queries.query.TreeQuerySet`` The
+  ``TreeNode`` abstract model already contains a ``parent`` foreign key
+  for your convenience.
 - Call the ``with_tree_fields()`` queryset method if you require the
   additional fields respectively the CTE.
 - Until documentation is more complete I'll have to refer you to the

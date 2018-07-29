@@ -24,7 +24,7 @@ class TreeNode(models.Model):
         """
         Returns all ancestors of the current node
 
-        See ``TreeQuerySet.ancestors`` for details.
+        See ``TreeQuerySet.ancestors`` for details and optional arguments.
         """
         return self.__class__._default_manager.ancestors(self, **kwargs)
 
@@ -32,7 +32,7 @@ class TreeNode(models.Model):
         """
         Returns all ancestors of the current node
 
-        See ``TreeQuerySet.descendants`` for details.
+        See ``TreeQuerySet.descendants`` for details and optional arguments.
         """
         return self.__class__._default_manager.descendants(self, **kwargs)
 

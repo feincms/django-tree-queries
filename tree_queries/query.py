@@ -6,6 +6,10 @@ from tree_queries.compiler import TreeQuery
 
 
 def pk(of):
+    """
+    Returns the primary key of the argument if it is an instance of a model, or
+    the argument as-is otherwise
+    """
     return of.pk if hasattr(of, "pk") else of
 
 
@@ -33,11 +37,18 @@ def positional(count):
 
 class TreeQuerySet(models.QuerySet):
     def with_tree_fields(self):
+        """
+        Requests tree fields on this queryset
+        """
         self.query.__class__ = TreeQuery
         return self
 
     @positional(2)
     def ancestors(self, of, include_self=False):
+        """ancestors(self, of, *, include_self=False)
+        Returns ancestors of the given node ordered from the root of the tree
+        towards deeper levels, optionally including the node itself
+        """
         if not hasattr(of, "tree_path"):
             of = self.with_tree_fields().get(pk=pk(of))
 
@@ -50,6 +61,10 @@ class TreeQuerySet(models.QuerySet):
 
     @positional(2)
     def descendants(self, of, include_self=False):
+        """descendants(self, of, *, include_self=False)
+        Returns descendants of the given node in depth-first order, optionally
+        including and starting with the node itself
+        """
         connection = connections[self.db]
         if connection.vendor == "postgresql":
             queryset = self.with_tree_fields().extra(
