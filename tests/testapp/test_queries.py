@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Sum
 from django.test import TestCase
@@ -10,7 +8,7 @@ from .models import Model, UnorderedModel
 
 class Test(TestCase):
     def create_tree(self):
-        tree = SimpleNamespace()
+        tree = type(str("Namespace"), (), {})()  # SimpleNamespace for PY2...
         tree.root = Model.objects.create(name="root")
         tree.child1 = Model.objects.create(parent=tree.root, position=0, name="1")
         tree.child2 = Model.objects.create(parent=tree.root, position=1, name="2")
