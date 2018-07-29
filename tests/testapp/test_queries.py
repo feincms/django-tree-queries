@@ -46,13 +46,20 @@ class Test(TestCase):
 
     def test_ancestors(self):
         tree = self.create_tree()
-        child2_2 = Model.objects.with_tree_fields().get(pk=tree.child2_2.pk)
-        self.assertEqual(list(child2_2.ancestors()), [tree.root, tree.child2])
+        self.assertEqual(list(tree.child2_2.ancestors()), [tree.root, tree.child2])
         self.assertEqual(
-            list(child2_2.ancestors(include_self=True)),
+            list(tree.child2_2.ancestors(include_self=True)),
             [tree.root, tree.child2, tree.child2_2],
         )
-        self.assertEqual(list(child2_2.ancestors().reverse()), [tree.child2, tree.root])
+        self.assertEqual(
+            list(tree.child2_2.ancestors().reverse()), [tree.child2, tree.root]
+        )
+
+        self.assertEqual(list(tree.root.ancestors()), [])
+        self.assertEqual(list(tree.root.ancestors(include_self=True)), [tree.root])
+
+        child2_2 = Model.objects.with_tree_fields().get(pk=tree.child2_2.pk)
+        self.assertEqual(list(child2_2.ancestors()), [tree.root, tree.child2])
 
     def test_descendants(self):
         tree = self.create_tree()
