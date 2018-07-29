@@ -8,8 +8,10 @@ class TreeQuery(Query):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
             raise ValueError("Need either using or connection")
-        if connection is None:  # pragma: no branch - how would this happen?
+        if using:
             connection = connections[using]
+        # Difference: Not connection.ops.compiler, but our own compiler which
+        # adds the CTE.
         return TreeCompiler(self, connection, using)
 
 
@@ -87,7 +89,7 @@ class TreeCompiler(SQLCompiler):
     """
 
     def as_sql(self, *args, **kwargs):
-
+        # Summary queries are aggregates (not annotations)
         is_summary = self.query._annotations and any(  # pragma: no branch
             # OK if generator is not consumed completely
             annotation.is_summary
@@ -96,7 +98,7 @@ class TreeCompiler(SQLCompiler):
         opts = self.query.model._meta
 
         params = {
-            "parent": "parent_id",
+            "parent": "parent_id",  # XXX Hardcoded.
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
             "order_by": opts.ordering[0] if opts.ordering else opts.pk.attname,
@@ -104,6 +106,8 @@ class TreeCompiler(SQLCompiler):
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             self.query.add_extra(
+                # Do not add extra fields to the select statement when it is a
+                # summary query
                 select={}
                 if is_summary
                 else {
@@ -117,6 +121,8 @@ class TreeCompiler(SQLCompiler):
                 tables=["__tree"],
                 order_by=(
                     []
+                    # Do not add ordering for aggregates, or if the ordering
+                    # has already been specified using .extra()
                     if is_summary or self.query.extra_order_by
                     else ["__tree.tree_ordering"]  # DFS is the only true way
                 ),
@@ -131,6 +137,9 @@ class TreeCompiler(SQLCompiler):
         return ("".join([CTE.format(**params), sql[0]]), sql[1])
 
     def get_converters(self, expressions):
+        # MySQL/MariaDB and sqlite3 do not support arrays. Transform the padded
+        # and concattenated strings for tree_path and tree_ordering back into
+        # arrays.
         converters = super().get_converters(expressions)
         for i, expression in enumerate(expressions):
             if any(f in str(expression) for f in ("tree_path", "tree_ordering")):
@@ -144,6 +153,8 @@ def converter(value, expression, connection, context=None):
         return value
     array = []
     while value:
+        # 10 chars per int. First char is always an "x", the rest are
+        # hexadecimal digits.
         array.append(int(value[1:10], 16))
         value = value[10:]
     return array
