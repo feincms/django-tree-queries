@@ -12,3 +12,7 @@ class Model(TreeNode):
 
     def __str__(self):
         return self.name
+
+
+class UnorderedModel(TreeNode):
+    pass

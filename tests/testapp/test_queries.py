@@ -5,7 +5,7 @@ from django.db.models import Count, Sum
 from django.test import TestCase
 
 from tree_queries.compiler import TreeQuery
-from .models import Model
+from .models import Model, UnorderedModel
 
 
 class Test(TestCase):
@@ -136,3 +136,6 @@ class Test(TestCase):
 
         # No error.
         tree.child1.full_clean()
+
+    def test_unordered(self):
+        self.assertEqual(list(UnorderedModel.objects.all()), [])
