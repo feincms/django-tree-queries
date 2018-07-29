@@ -6,6 +6,15 @@ from tree_queries.query import TreeQuerySet
 
 
 class TreeNode(models.Model):
+    parent = models.ForeignKey(
+        "self",
+        blank=True,
+        null=True,
+        on_delete=models.CASCADE,
+        verbose_name=_("parent"),
+        related_name="children",
+    )
+
     objects = TreeQuerySet.as_manager()
 
     class Meta:

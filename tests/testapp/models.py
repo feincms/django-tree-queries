@@ -4,9 +4,6 @@ from tree_queries.models import TreeNode
 
 
 class Model(TreeNode):
-    parent = models.ForeignKey(
-        "self", on_delete=models.CASCADE, related_name="children", blank=True, null=True
-    )
     position = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=100)
 
