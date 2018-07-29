@@ -6,7 +6,11 @@ django-tree-queries
    :target: https://travis-ci.org/matthiask/django-tree-queries
 
 Query Django model trees using adjacency lists and recursive common
-table expressions. Supports PostgreSQL, sqlite3 and MariaDB.
+table expressions. Supports PostgreSQL, sqlite3 (3.8.3 or higher) and
+MariaDB (10.2.2 or higher), maybe also MySQL 8.0 but I found no easy way
+to test against it.
+
+Supports Django 1.11 or better, Python 2.7 and 3.4 or better.
 
 
 Features and limitations
