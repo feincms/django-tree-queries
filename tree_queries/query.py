@@ -1,3 +1,5 @@
+from functools import wraps
+
 from django.db import connections, models
 
 from tree_queries.compiler import TreeQuery
@@ -7,12 +9,35 @@ def pk(of):
     return of.pk if hasattr(of, "pk") else of
 
 
+def positional(count):
+    """
+    Only allows ``count`` positional arguments to the decorated callable
+
+    Will be removed as soon as we drop support for Python 2.
+    """
+
+    def _dec(fn):
+        @wraps(fn)
+        def _fn(*args, **kwargs):
+            if len(args) > count:
+                raise TypeError(
+                    "Only %s positional argument%s allowed"
+                    % (count, "" if count == 1 else "s")
+                )
+            return fn(*args, **kwargs)
+
+        return _fn
+
+    return _dec
+
+
 class TreeQuerySet(models.QuerySet):
     def with_tree_fields(self):
         self.query.__class__ = TreeQuery
         return self
 
-    def ancestors(self, of, *, include_self=False):
+    @positional(2)
+    def ancestors(self, of, include_self=False):
         if not hasattr(of, "tree_path"):
             of = self.with_tree_fields().get(pk=pk(of))
 
@@ -23,7 +48,8 @@ class TreeQuerySet(models.QuerySet):
             .extra(order_by=["__tree.tree_depth"])
         )
 
-    def descendants(self, of, *, include_self=False):
+    @positional(2)
+    def descendants(self, of, include_self=False):
         connection = connections[self.db]
         if connection.vendor == "postgresql":
             queryset = self.with_tree_fields().extra(

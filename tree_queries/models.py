@@ -20,17 +20,27 @@ class TreeNode(models.Model):
     class Meta:
         abstract = True
 
-    def ancestors(self, *, include_self=False):
-        return self.__class__._default_manager.ancestors(
-            self, include_self=include_self
-        )
+    def ancestors(self, **kwargs):
+        """
+        Returns all ancestors of the current node
 
-    def descendants(self, *, include_self=False):
-        return self.__class__._default_manager.descendants(
-            self, include_self=include_self
-        )
+        See ``TreeQuerySet.ancestors`` for details.
+        """
+        return self.__class__._default_manager.ancestors(self, **kwargs)
+
+    def descendants(self, **kwargs):
+        """
+        Returns all ancestors of the current node
+
+        See ``TreeQuerySet.descendants`` for details.
+        """
+        return self.__class__._default_manager.descendants(self, **kwargs)
 
     def clean(self):
+        """
+        Raises a validation error if saving this instance would result in loops
+        in the tree structure
+        """
         super().clean()
         if (
             self.parent_id

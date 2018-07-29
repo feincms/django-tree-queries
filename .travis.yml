@@ -7,8 +7,6 @@ python:
 - "3.4"
 addons:
   postgresql: "9.4"
-# TODO test on sqlite3 and MariaDB
-# mariadb: "10.3"
 env:
 - REQ="Django>=1.11,<2.0"
 - REQ="Django>=2.0,<2.1"
@@ -17,6 +15,9 @@ env:
 matrix:
   allow_failures:
     - env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+  include:
+    - python: "2.7"
+      env: REQ="Django>=1.11,<2.0"
   exclude:
     - python: "3.4"
       env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
