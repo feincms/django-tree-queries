@@ -41,7 +41,7 @@ class TreeNode(models.Model):
         Raises a validation error if saving this instance would result in loops
         in the tree structure
         """
-        super().clean()
+        super(TreeNode, self).clean()
         if (
             self.parent_id
             and self.pk

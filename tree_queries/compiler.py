@@ -128,7 +128,7 @@ class TreeCompiler(SQLCompiler):
                 ),
             )
 
-        sql = super().as_sql(*args, **kwargs)
+        sql = super(TreeCompiler, self).as_sql(*args, **kwargs)
         CTE = {
             "postgresql": self.CTE_POSTGRESQL,
             "sqlite": self.CTE_SQLITE3,
@@ -140,7 +140,7 @@ class TreeCompiler(SQLCompiler):
         # MySQL/MariaDB and sqlite3 do not support arrays. Transform the padded
         # and concattenated strings for tree_path and tree_ordering back into
         # arrays.
-        converters = super().get_converters(expressions)
+        converters = super(TreeCompiler, self).get_converters(expressions)
         for i, expression in enumerate(expressions):
             if any(f in str(expression) for f in ("tree_path", "tree_ordering")):
                 converters[i] = ([converter], expression)
