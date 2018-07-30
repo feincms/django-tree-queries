@@ -70,8 +70,8 @@ class TreeCompiler(SQLCompiler):
     WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0 tree_depth,
-            printf("x%09x", {pk}) tree_path,
-            printf("x%09x", {order_by}) tree_ordering,
+            printf("x%%09x", {pk}) tree_path,
+            printf("x%%09x", {order_by}) tree_ordering,
             T."{pk}" tree_pk
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -80,8 +80,8 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             __tree.tree_depth + 1,
-            __tree.tree_path || printf("x%09x", T.{pk}),
-            __tree.tree_ordering || printf("x%09x", T.{order_by}),
+            __tree.tree_path || printf("x%%09x", T.{pk}),
+            __tree.tree_ordering || printf("x%%09x", T.{order_by}),
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
