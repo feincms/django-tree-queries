@@ -1,6 +1,7 @@
 from functools import wraps
 
 from django.db import connections, models
+from django.db.models.sql.query import Query
 
 from tree_queries.compiler import TreeQuery
 
@@ -36,11 +37,13 @@ def positional(count):
 
 
 class TreeQuerySet(models.QuerySet):
-    def with_tree_fields(self):
+    def with_tree_fields(self, tree_fields=True):
         """
         Requests tree fields on this queryset
+
+        Pass ``False`` to revert to a queryset without tree fields.
         """
-        self.query.__class__ = TreeQuery
+        self.query.__class__ = TreeQuery if tree_fields else Query
         return self
 
     @positional(2)

@@ -146,3 +146,12 @@ class Test(TestCase):
 
     def test_unordered(self):
         self.assertEqual(list(UnorderedModel.objects.all()), [])
+
+    def test_revert(self):
+        tree = self.create_tree()
+        obj = (
+            Model.objects.with_tree_fields()
+            .with_tree_fields(False)
+            .get(pk=tree.root.pk)
+        )
+        self.assertFalse(hasattr(obj, "tree_depth"))
