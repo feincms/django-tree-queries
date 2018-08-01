@@ -10,14 +10,14 @@ addons:
 env:
 - REQ="Django>=1.11,<2.0"
 - REQ="Django>=2.0,<2.1"
-- REQ="Django==2.1rc1"
+- REQ="Django>=2.1,<2.2"
 - REQ="https://github.com/django/django/archive/master.zip#egg=Django"
 matrix:
   exclude:
   - python: "3.4"
     env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
   - python: "3.4"
-    env: REQ="Django==2.1rc1"
+    env: REQ="Django>=2.1,<2.2"
   allow_failures:
   - env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
 install:
@@ -47,7 +47,7 @@ jobs:
 #       env: DB=sqlite3
 #       install:
 #         - pip install -U pip wheel
-#         - pip install "Django==2.1rc1"
+#         - pip install "Django>=2.1,<2.2"
 #         - python setup.py install
 #       script:
 #         - python -c "import sqlite3;print(sqlite3.sqlite_version_info)"
