@@ -1,4 +1,5 @@
 import os
+import sys
 
 
 DATABASES = {
@@ -10,6 +11,20 @@ if os.environ.get("DB") == "mariadb":
         "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
     }
 elif os.environ.get("DB") == "sqlite3":
+    try:
+        import pysqlite3.dbapi2
+    except ImportError:
+        import sqlite3
+
+        sys.stdout.write("Running with pysqlite3 %s\n" % (sqlite3.sqlite_version_info,))
+    else:
+        sys.modules["sqlite3"] = pysqlite3
+        sys.modules["sqlite3.dbapi2"] = pysqlite3.dbapi2
+
+        sys.stdout.write(
+            "Running with pysqlite3 %s\n" % (pysqlite3.sqlite_version_info,)
+        )
+
     DATABASES = {
         "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
     }
