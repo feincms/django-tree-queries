@@ -5,6 +5,9 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+`0.2`_ (2018-10-04)
+~~~~~~~~~~~~~~~~~~~
+
 - Added an optional argument to ``TreeQuerySet.with_tree_fields()`` to
   allow reverting to a standard queryset (without tree fields).
 - Added ``tree_queries.fields.TreeNodeForeignKey``,
@@ -21,4 +24,4 @@ Change log
 
 .. _0.1: https://github.com/matthiask/django-tree-queries/commit/93d70046a2
 .. _0.2: https://github.com/matthiask/django-tree-queries/compare/0.1...0.2
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.1...master
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.2...master
