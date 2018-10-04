@@ -169,5 +169,5 @@ class Test(TestCase):
 
         html = "{}".format(Form())
         self.assertIn(
-            '<option value="{}">- - 2-1</option>'.format(tree.child2_1.pk), html
+            '<option value="{}">--- --- 2-1</option>'.format(tree.child2_1.pk), html
         )

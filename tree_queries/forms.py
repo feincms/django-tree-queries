@@ -11,7 +11,7 @@ class TreeNodeIndentedLabels(object):
 
     def label_from_instance(self, obj):
         depth = getattr(obj, "tree_depth", 0)
-        return "{}{}".format("".join(["- "] * depth), obj)
+        return "{}{}".format("".join(["--- "] * depth), obj)
 
 
 class TreeNodeChoiceField(TreeNodeIndentedLabels, forms.ModelChoiceField):
