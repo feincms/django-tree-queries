@@ -171,3 +171,21 @@ class Test(TestCase):
         self.assertIn(
             '<option value="{}">--- --- 2-1</option>'.format(tree.child2_1.pk), html
         )
+        self.assertIn("root", html)
+
+        class OtherForm(forms.Form):
+            node = Model._meta.get_field("parent").formfield(
+                label_from_instance=lambda obj: "{}{}".format(
+                    "".join(
+                        ["*** " if obj == tree.child2_1 else "--- "] * obj.tree_depth
+                    ),
+                    obj,
+                ),
+                queryset=tree.child2.descendants(),
+            )
+
+        html = "{}".format(OtherForm())
+        self.assertIn(
+            '<option value="{}">*** *** 2-1</option>'.format(tree.child2_1.pk), html
+        )
+        self.assertNotIn("root", html)

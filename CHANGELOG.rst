@@ -5,6 +5,9 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+- Added a ``label_from_instance`` override to the form fields.
+
+
 `0.2`_ (2018-10-04)
 ~~~~~~~~~~~~~~~~~~~
 
