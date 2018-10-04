@@ -11,6 +11,7 @@ Change log
   ``tree_queries.forms.TreeNodeChoiceField`` and
   ``tree_queries.forms.TreeNodeMultipleChoiceField`` with node depth
   visualization.
+- Dropped Python 3.4 from the CI.
 
 
 `0.1`_ (2018-07-30)
