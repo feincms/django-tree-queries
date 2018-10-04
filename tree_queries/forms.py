@@ -1,0 +1,24 @@
+from __future__ import unicode_literals
+
+from django import forms
+
+
+class TreeNodeIndentedLabels(object):
+    def __init__(self, queryset, *args, **kwargs):
+        if hasattr(queryset, "with_tree_fields"):
+            queryset = queryset.with_tree_fields()
+        super(TreeNodeIndentedLabels, self).__init__(queryset, *args, **kwargs)
+
+    def label_from_instance(self, obj):
+        depth = getattr(obj, "tree_depth", 0)
+        return "{}{}".format("".join(["- "] * depth), obj)
+
+
+class TreeNodeChoiceField(TreeNodeIndentedLabels, forms.ModelChoiceField):
+    pass
+
+
+class TreeNodeMultipleChoiceField(
+    TreeNodeIndentedLabels, forms.ModelMultipleChoiceField
+):
+    pass

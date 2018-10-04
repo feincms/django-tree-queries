@@ -7,6 +7,10 @@ Change log
 
 - Added an optional argument to ``TreeQuerySet.with_tree_fields()`` to
   allow reverting to a standard queryset (without tree fields).
+- Added ``tree_queries.fields.TreeNodeForeignKey``,
+  ``tree_queries.forms.TreeNodeChoiceField`` and
+  ``tree_queries.forms.TreeNodeMultipleChoiceField`` with node depth
+  visualization.
 
 
 `0.1`_ (2018-07-30)

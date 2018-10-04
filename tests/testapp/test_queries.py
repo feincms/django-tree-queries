@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+
+from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Sum
 from django.test import TestCase
@@ -155,3 +158,16 @@ class Test(TestCase):
             .get(pk=tree.root.pk)
         )
         self.assertFalse(hasattr(obj, "tree_depth"))
+
+    def test_form_field(self):
+        tree = self.create_tree()
+
+        class Form(forms.ModelForm):
+            class Meta:
+                model = Model
+                fields = ["parent"]
+
+        html = "{}".format(Form())
+        self.assertIn(
+            '<option value="{}">- - 2-1</option>'.format(tree.child2_1.pk), html
+        )

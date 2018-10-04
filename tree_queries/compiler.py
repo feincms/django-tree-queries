@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.db import connections
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
