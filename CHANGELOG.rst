@@ -6,6 +6,8 @@ Change log
 ~~~~~~~~~~~~~~~
 
 - Added a ``label_from_instance`` override to the form fields.
+- Removed the limitation that nodes can only be ordered using an integer
+  field within their siblings.
 
 
 `0.2`_ (2018-10-04)

@@ -16,3 +16,14 @@ class Model(TreeNode):
 
 class UnorderedModel(TreeNode):
     pass
+
+
+class StringOrderedModel(TreeNode):
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ("name",)
+        unique_together = (("name", "parent"),)
+
+    def __str__(self):
+        return self.name

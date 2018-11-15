@@ -78,7 +78,7 @@ class TreeQuerySet(models.QuerySet):
 
         else:
             queryset = self.with_tree_fields().extra(
-                where=['instr(__tree.tree_path, "x{:09x}") <> 0'.format(pk(of))]
+                where=['instr(__tree.tree_path, "\x09{}\x09") <> 0'.format(pk(of))]
             )
 
         if not include_self:

@@ -6,7 +6,7 @@ from django.db.models import Count, Sum
 from django.test import TestCase
 
 from tree_queries.compiler import TreeQuery
-from .models import Model, UnorderedModel
+from .models import Model, UnorderedModel, StringOrderedModel
 
 
 class Test(TestCase):
@@ -189,3 +189,23 @@ class Test(TestCase):
             '<option value="{}">*** *** 2-1</option>'.format(tree.child2_1.pk), html
         )
         self.assertNotIn("root", html)
+
+    def test_string_ordering(self):
+        tree = type(str("Namespace"), (), {})()  # SimpleNamespace for PY2...
+
+        tree.p1 = StringOrderedModel.objects.create(name="p1")
+        tree.p2 = StringOrderedModel.objects.create(name="p2")
+        tree.c1 = StringOrderedModel.objects.create(name="c1", parent=tree.p1)
+        tree.c2 = StringOrderedModel.objects.create(name="c2", parent=tree.p1)
+
+        self.assertEqual(
+            list(StringOrderedModel.objects.with_tree_fields()),
+            [tree.p1, tree.c1, tree.c2, tree.p2],
+        )
+
+        self.assertEqual(list(tree.c1.ancestors(include_self=True)), [tree.p1, tree.c1])
+
+        self.assertEqual(
+            list(StringOrderedModel.objects.descendants(tree.p1, include_self=True)),
+            [tree.p1, tree.c1, tree.c2],
+        )

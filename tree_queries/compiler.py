@@ -50,8 +50,8 @@ class TreeCompiler(SQLCompiler):
         SELECT
             0,
             -- Limit to max. 10 levels...
-            CAST(CONCAT("x", LPAD(HEX({pk}), 9, "0")) AS char(100)),
-            CAST(CONCAT("x", LPAD(HEX({order_by}), 9, "0")) AS char(100)),
+            CAST(CONCAT("\x09", {pk}, "\x09") AS char(1000)),
+            CAST(CONCAT("\x09", {order_by}, "\x09") AS char(1000)),
             T.{pk}
         FROM {db_table} T
         WHERE T.{parent} IS NULL
@@ -60,8 +60,8 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             __tree.tree_depth + 1,
-            CONCAT(__tree.tree_path, "x", LPAD(HEX(T2.{pk}), 9, "0")),
-            CONCAT(__tree.tree_ordering, "x", LPAD(HEX(T2.{order_by}), 9, "0")),
+            CONCAT(__tree.tree_path, T2.{pk}, "\x09"),
+            CONCAT(__tree.tree_ordering, T2.{order_by}, "\x09"),
             T2.{pk}
         FROM __tree, {db_table} T2
         WHERE __tree.tree_pk = T2.{parent}
@@ -72,8 +72,8 @@ class TreeCompiler(SQLCompiler):
     WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0 tree_depth,
-            printf("x%%09x", {pk}) tree_path,
-            printf("x%%09x", {order_by}) tree_ordering,
+            printf("\x09%%s\x09", {pk}) tree_path,
+            printf("\x09%%s\x09", {order_by}) tree_ordering,
             T."{pk}" tree_pk
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -82,8 +82,8 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             __tree.tree_depth + 1,
-            __tree.tree_path || printf("x%%09x", T.{pk}),
-            __tree.tree_ordering || printf("x%%09x", T.{order_by}),
+            __tree.tree_path || printf("%%s\x09", T.{pk}),
+            __tree.tree_ordering || printf("%%s\x09", T.{order_by}),
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -153,10 +153,11 @@ def converter(value, expression, connection, context=None):
     # context can be removed as soon as we only support Django>=2.0
     if not isinstance(value, str):
         return value
-    array = []
-    while value:
-        # 10 chars per int. First char is always an "x", the rest are
-        # hexadecimal digits.
-        array.append(int(value[1:10], 16))
-        value = value[10:]
-    return array
+
+    def tryint(v):
+        try:
+            return int(v)
+        except ValueError:
+            return v
+
+    return [tryint(v) for v in value.split("\x09")[1:-1]]
