@@ -5,6 +5,9 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+`0.3`_ (2018-11-15)
+~~~~~~~~~~~~~~~~~~~
+
 - Added a ``label_from_instance`` override to the form fields.
 - Removed the limitation that nodes can only be ordered using an integer
   field within their siblings.
@@ -32,4 +35,5 @@ Change log
 
 .. _0.1: https://github.com/matthiask/django-tree-queries/commit/93d70046a2
 .. _0.2: https://github.com/matthiask/django-tree-queries/compare/0.1...0.2
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.2...master
+.. _0.3: https://github.com/matthiask/django-tree-queries/compare/0.2...0.3
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.3...master
