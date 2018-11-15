@@ -139,9 +139,6 @@ class TreeCompiler(SQLCompiler):
         return ("".join([CTE.format(**params), sql[0]]), sql[1])
 
     def get_converters(self, expressions):
-        # MySQL/MariaDB and sqlite3 do not support arrays. Transform the padded
-        # and concattenated strings for tree_path and tree_ordering back into
-        # arrays.
         converters = super(TreeCompiler, self).get_converters(expressions)
         for i, expression in enumerate(expressions):
             if any(f in str(expression) for f in ("tree_path", "tree_ordering")):
@@ -152,11 +149,14 @@ class TreeCompiler(SQLCompiler):
 def converter(value, expression, connection, context=None):
     # context can be removed as soon as we only support Django>=2.0
     if isinstance(value, str):
+        # MySQL/MariaDB and sqlite3 do not support arrays. Transform the padded
+        # and concattenated strings for tree_path and tree_ordering back into
+        # arrays.
         value = value.split("\x09")[1:-1]
 
     def tryint(v):
         try:
-            return int(v)
+            return int(v)  # Maybe Field.to_python()?
         except ValueError:
             return v
 
