@@ -8,6 +8,9 @@ Change log
 - Added a ``label_from_instance`` override to the form fields.
 - Removed the limitation that nodes can only be ordered using an integer
   field within their siblings.
+- Changed the representation of ``tree_path`` and ``tree_ordering`` used
+  on MySQL/MariaDB and sqlite3. Also made it clear that the
+  representation isn't part of the public interface of this package.
 
 
 `0.2`_ (2018-10-04)

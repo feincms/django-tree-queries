@@ -5,7 +5,7 @@ from functools import wraps
 from django.db import connections, models
 from django.db.models.sql.query import Query
 
-from tree_queries.compiler import TreeQuery
+from tree_queries.compiler import SEPARATOR, TreeQuery
 
 
 def pk(of):
@@ -78,7 +78,12 @@ class TreeQuerySet(models.QuerySet):
 
         else:
             queryset = self.with_tree_fields().extra(
-                where=['instr(__tree.tree_path, "\x09{}\x09") <> 0'.format(pk(of))]
+                # NOTE! The representation of tree_path is NOT part of the API.
+                where=[
+                    'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
+                        pk=pk(of), sep=SEPARATOR
+                    )
+                ]
             )
 
         if not include_self:

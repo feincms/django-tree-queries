@@ -5,6 +5,9 @@ from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
 
+SEPARATOR = "\x1f"
+
+
 class TreeQuery(Query):
     def get_compiler(self, using=None, connection=None):
         # Copied from django/db/models/sql/query.py
@@ -50,8 +53,8 @@ class TreeCompiler(SQLCompiler):
         SELECT
             0,
             -- Limit to max. 10 levels...
-            CAST(CONCAT("\x09", {pk}, "\x09") AS char(1000)),
-            CAST(CONCAT("\x09", {order_by}, "\x09") AS char(1000)),
+            CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
+            CAST(CONCAT("{sep}", {order_by}, "{sep}") AS char(1000)),
             T.{pk}
         FROM {db_table} T
         WHERE T.{parent} IS NULL
@@ -60,8 +63,8 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             __tree.tree_depth + 1,
-            CONCAT(__tree.tree_path, T2.{pk}, "\x09"),
-            CONCAT(__tree.tree_ordering, T2.{order_by}, "\x09"),
+            CONCAT(__tree.tree_path, T2.{pk}, "{sep}"),
+            CONCAT(__tree.tree_ordering, T2.{order_by}, "{sep}"),
             T2.{pk}
         FROM __tree, {db_table} T2
         WHERE __tree.tree_pk = T2.{parent}
@@ -72,8 +75,8 @@ class TreeCompiler(SQLCompiler):
     WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0 tree_depth,
-            printf("\x09%%s\x09", {pk}) tree_path,
-            printf("\x09%%s\x09", {order_by}) tree_ordering,
+            printf("{sep}%%s{sep}", {pk}) tree_path,
+            printf("{sep}%%s{sep}", {order_by}) tree_ordering,
             T."{pk}" tree_pk
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -82,8 +85,8 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             __tree.tree_depth + 1,
-            __tree.tree_path || printf("%%s\x09", T.{pk}),
-            __tree.tree_ordering || printf("%%s\x09", T.{order_by}),
+            __tree.tree_path || printf("%%s{sep}", T.{pk}),
+            __tree.tree_ordering || printf("%%s{sep}", T.{order_by}),
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -104,6 +107,7 @@ class TreeCompiler(SQLCompiler):
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
             "order_by": opts.ordering[0] if opts.ordering else opts.pk.attname,
+            "sep": SEPARATOR,
         }
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
@@ -149,15 +153,13 @@ class TreeCompiler(SQLCompiler):
 def converter(value, expression, connection, context=None):
     # context can be removed as soon as we only support Django>=2.0
     if isinstance(value, str):
-        # MySQL/MariaDB and sqlite3 do not support arrays. Transform the padded
-        # and concattenated strings for tree_path and tree_ordering back into
-        # arrays.
-        value = value.split("\x09")[1:-1]
+        # MySQL/MariaDB and sqlite3 do not support arrays. Split the value on
+        # the ASCII unit separator (chr(31)).
+        # NOTE: The representation of array is NOT part of the API.
+        value = value.split(SEPARATOR)[1:-1]
 
-    def tryint(v):
-        try:
-            return int(v)  # Maybe Field.to_python()?
-        except ValueError:
-            return v
-
-    return [tryint(v) for v in value]
+    try:
+        # Either all values are convertible to int or don't bother
+        return [int(v) for v in value]  # Maybe Field.to_python()?
+    except ValueError:
+        return value
