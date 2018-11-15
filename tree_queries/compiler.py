@@ -27,8 +27,8 @@ class TreeCompiler(SQLCompiler):
     ) AS (
         SELECT
             0 AS tree_depth,
-            array[T.{pk}] AS tree_path,
-            array[{order_by}] AS tree_ordering,
+            array[T.{pk}]::text[] AS tree_path,
+            array[{order_by}]::text[] AS tree_ordering,
             T."{pk}"
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -37,8 +37,8 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             __tree.tree_depth + 1 AS tree_depth,
-            __tree.tree_path || T.{pk},
-            __tree.tree_ordering || {order_by},
+            __tree.tree_path || T.{pk}::text,
+            __tree.tree_ordering || {order_by}::text,
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -151,8 +151,8 @@ class TreeCompiler(SQLCompiler):
 
 def converter(value, expression, connection, context=None):
     # context can be removed as soon as we only support Django>=2.0
-    if not isinstance(value, str):
-        return value
+    if isinstance(value, str):
+        value = value.split("\x09")[1:-1]
 
     def tryint(v):
         try:
@@ -160,4 +160,4 @@ def converter(value, expression, connection, context=None):
         except ValueError:
             return v
 
-    return [tryint(v) for v in value.split("\x09")[1:-1]]
+    return [tryint(v) for v in value]
