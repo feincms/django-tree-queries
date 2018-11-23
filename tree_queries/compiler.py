@@ -31,7 +31,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             0 AS tree_depth,
             array[T.{pk}]::text[] AS tree_path,
-            array[{order_by}]::text[] AS tree_ordering,
+            array[LPAD(CONCAT({order_by}), 20, '0')]::text[] AS tree_ordering,
             T."{pk}"
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -41,7 +41,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             __tree.tree_depth + 1 AS tree_depth,
             __tree.tree_path || T.{pk}::text,
-            __tree.tree_ordering || {order_by}::text,
+            __tree.tree_ordering || LPAD(CONCAT({order_by}), 20, '0')::text,
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -54,7 +54,7 @@ class TreeCompiler(SQLCompiler):
             0,
             -- Limit to max. 10 levels...
             CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
-            CAST(CONCAT("{sep}", {order_by}, "{sep}") AS char(1000)),
+            CAST(CONCAT("{sep}", LPAD(CONCAT({order_by}, "{sep}"), 20, "0")) AS char(1000)),
             T.{pk}
         FROM {db_table} T
         WHERE T.{parent} IS NULL
@@ -64,7 +64,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             __tree.tree_depth + 1,
             CONCAT(__tree.tree_path, T2.{pk}, "{sep}"),
-            CONCAT(__tree.tree_ordering, T2.{order_by}, "{sep}"),
+            CONCAT(__tree.tree_ordering, LPAD(CONCAT(T2.{order_by}, "{sep}"), 20, "0")),
             T2.{pk}
         FROM __tree, {db_table} T2
         WHERE __tree.tree_pk = T2.{parent}
@@ -76,7 +76,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             0 tree_depth,
             printf("{sep}%%s{sep}", {pk}) tree_path,
-            printf("{sep}%%s{sep}", {order_by}) tree_ordering,
+            printf("{sep}%%020s{sep}", {order_by}) tree_ordering,
             T."{pk}" tree_pk
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -86,7 +86,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             __tree.tree_depth + 1,
             __tree.tree_path || printf("%%s{sep}", T.{pk}),
-            __tree.tree_ordering || printf("%%s{sep}", T.{order_by}),
+            __tree.tree_ordering || printf("%%020s{sep}", T.{order_by}),
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk

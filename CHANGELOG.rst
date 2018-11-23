@@ -5,6 +5,10 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+- Fixed a grave bug where a position of ``110`` would be sorted before
+  ``20`` for obvious reasons.
+
+
 `0.3`_ (2018-11-15)
 ~~~~~~~~~~~~~~~~~~~
 
