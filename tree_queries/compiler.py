@@ -54,7 +54,8 @@ class TreeCompiler(SQLCompiler):
             0,
             -- Limit to max. 10 levels...
             CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
-            CAST(CONCAT("{sep}", LPAD(CONCAT({order_by}, "{sep}"), 20, "0")) AS char(1000)),
+            CAST(CONCAT("{sep}", LPAD(CONCAT({order_by}, "{sep}"), 20, "0"))
+                AS char(1000)),
             T.{pk}
         FROM {db_table} T
         WHERE T.{parent} IS NULL

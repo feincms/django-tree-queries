@@ -213,12 +213,7 @@ class Test(TestCase):
     def test_many_ordering(self):
         root = Model.objects.create(position=1, name="root")
         for i in range(20, 0, -1):
-            Model.objects.create(
-                parent=root,
-                name="Node {}".format(i),
-                position=i * 10,
-            )
+            Model.objects.create(parent=root, name="Node {}".format(i), position=i * 10)
 
-        all = Model.objects.with_tree_fields().all()
         positions = [m.position for m in Model.objects.with_tree_fields()]
         self.assertEqual(positions, list(sorted(positions)))
