@@ -7,6 +7,8 @@ Change log
 
 - Fixed a grave bug where a position of ``110`` would be sorted before
   ``20`` for obvious reasons.
+- Added a custom ``TreeNodeForeignKey.deconstruct`` method to avoid
+  migrations because of changing field types.
 
 
 `0.3`_ (2018-11-15)
