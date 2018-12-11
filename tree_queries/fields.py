@@ -7,7 +7,7 @@ from .forms import TreeNodeChoiceField
 
 class TreeNodeForeignKey(models.ForeignKey):
     def deconstruct(self):
-        name, path, args, kwargs = super().deconstruct()
+        name, path, args, kwargs = super(TreeNodeForeignKey, self).deconstruct()
         return (name, "django.db.models.ForeignKey", args, kwargs)
 
     def formfield(self, **kwargs):
