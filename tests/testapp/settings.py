@@ -1,9 +1,18 @@
 import os
 import sys
 
+import django
+
 
 DATABASES = {
-    "default": {"ENGINE": "django.db.backends.postgresql", "NAME": "tree-queries"}
+    "default": {
+        "ENGINE": (
+            "django.db.backends.postgresql_psycopg2"
+            if django.VERSION < (1,)
+            else "django.db.backends.postgresql"
+        ),
+        "NAME": "tree-queries",
+    }
 }
 
 if os.environ.get("DB") == "mariadb":
