@@ -7,9 +7,9 @@ import django
 DATABASES = {
     "default": {
         "ENGINE": (
-            "django.db.backends.postgresql_psycopg2"
-            if django.VERSION < (1,)
-            else "django.db.backends.postgresql"
+            "django.db.backends.postgresql"
+            if django.VERSION > (2,)
+            else "django.db.backends.postgresql_psycopg2"
         ),
         "NAME": "tree-queries",
     }
