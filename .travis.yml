@@ -1,54 +1,64 @@
+dist: xenial
 sudo: false
-cache: pip
 language: python
+cache: pip
 python:
-- "3.6"
-- "3.5"
-addons:
-  postgresql: "9.4"
-env:
-- REQ="Django>=1.11,<2.0"
-- REQ="Django>=2.0,<2.1"
-- REQ="Django>=2.1,<2.2"
-- REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+- 3.7
+services:
+  - postgresql
 matrix:
-  allow_failures:
-  - env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
-install:
-- pip install -U pip wheel
-- pip install $REQ psycopg2-binary
-- python setup.py install
-script: cd tests && ./manage.py test -v 2 testapp && cd ..
-
-jobs:
+  fast_finish: true
   include:
-    - stage: prehistoric
-      python: "2.7"
+    - python: 3.7
+      env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+    - python: 3.7
+      env: REQ="Django>=2.2a1,<3.0"
+    - python: 3.6
+      env: REQ="Django>=2.2a1,<3.0"
+    - python: 3.5
+      env: REQ="Django>=2.2a1,<3.0"
+    - python: 3.7
+      env: REQ="Django>=2.1,<2.2"
+    - python: 3.7
+      env: REQ="Django>=2.0,<2.1"
+    - python: 3.7
       env: REQ="Django>=1.11,<2.0"
-    - stage: mariadb
+    - python: 3.6
+      env: REQ="Django>=1.11,<2.0"
+    - python: 3.5
+      env: REQ="Django>=1.11,<2.0"
+    - python: 3.4
+      env: REQ="Django>=1.11,<2.0"
+    - python: 2.7
+      env: REQ="Django>=1.11,<2.0"
+    - python: 2.7
+      env: REQ="Django>=1.8,<1.9"
+    - python: 3.6
       env: DB=mariadb
       addons:
         mariadb: "10.3"
       install:
         - pip install -U pip wheel
-        - pip install "Django>=2.1,<2.2" mysqlclient
+        - pip install Django mysqlclient
         - python setup.py install
-      script:
-        cd tests && ./manage.py test -v 2 testapp && cd ..
-    - stage: sqlite3
-      python: "3.6"
+    - python: 3.6
       env: DB=sqlite3
       install:
         - pip install -U pip wheel
         - pip install https://github.com/karlb/pysqlite3/archive/master.zip
-        - pip install "Django>=2.1,<2.2"
+        - pip install Django
         - python setup.py install
-      script:
-        - cd tests && ./manage.py test -v 2 testapp && cd ..
-    - stage: style
+    - python: 3.7
       env: REQ=none
       install: skip
       script:
         - pip install black flake8
         - flake8 .
         - black --check tree_queries tests
+  allow_failures:
+  - env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+install:
+- pip install -U pip wheel
+- pip install $REQ psycopg2-binary
+- python setup.py install
+script: cd tests && ./manage.py test -v 2 testapp
