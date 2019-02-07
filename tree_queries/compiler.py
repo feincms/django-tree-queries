@@ -96,10 +96,10 @@ class TreeCompiler(SQLCompiler):
 
     def as_sql(self, *args, **kwargs):
         # Summary queries are aggregates (not annotations)
-        is_summary = self.query._annotations and any(  # pragma: no branch
+        is_summary = any(  # pragma: no branch
             # OK if generator is not consumed completely
             annotation.is_summary
-            for alias, annotation in self.query._annotations.items()
+            for alias, annotation in self.query.annotations.items()
         )
         opts = self.query.model._meta
 

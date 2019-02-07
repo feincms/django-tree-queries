@@ -9,6 +9,8 @@ Change log
   ``20`` for obvious reasons.
 - Added a custom ``TreeNodeForeignKey.deconstruct`` method to avoid
   migrations because of changing field types.
+- Removed one case of unnecessary fumbling in ``Query``'s internals
+  making things needlessly harder than they need to be.
 
 
 `0.3`_ (2018-11-15)
