@@ -10,7 +10,8 @@ Change log
 - Added a custom ``TreeNodeForeignKey.deconstruct`` method to avoid
   migrations because of changing field types.
 - Removed one case of unnecessary fumbling in ``Query``'s internals
-  making things needlessly harder than they need to be.
+  making things needlessly harder than they need to be. Made
+  django-tree-queries compatible with Django's master branch.
 
 
 `0.3`_ (2018-11-15)
