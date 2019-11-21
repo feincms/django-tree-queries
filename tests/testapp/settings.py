@@ -11,13 +11,13 @@ DATABASES = {
             if django.VERSION > (2,)
             else "django.db.backends.postgresql_psycopg2"
         ),
-        "NAME": "tree-queries",
+        "NAME": "tree_queries",
     }
 }
 
 if os.environ.get("DB") == "mariadb":
     DATABASES = {
-        "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree-queries"}
+        "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree_queries"}
     }
 elif os.environ.get("DB") == "sqlite3":
     try:

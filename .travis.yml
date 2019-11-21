@@ -41,6 +41,12 @@ matrix:
       env: DB=mariadb
       addons:
         mariadb: "10.3"
+      before_install:
+        - sudo mysql -u root -e "DROP USER IF EXISTS 'travis'@'%';"
+        - sudo mysql -u root -e "CREATE USER 'travis'@'%';"
+        - sudo mysql -u root -e "DROP DATABASE IF EXISTS tree_queries;"
+        - sudo mysql -u root -e "CREATE DATABASE tree_queries;"
+        - sudo mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';"
       install:
         - pip install -U pip wheel
         - pip install Django mysqlclient
