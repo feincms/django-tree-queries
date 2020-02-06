@@ -12,6 +12,7 @@ Change log
 - Removed one case of unnecessary fumbling in ``Query``'s internals
   making things needlessly harder than they need to be. Made
   django-tree-queries compatible with Django's master branch.
+- Removed Python 3.4 from the Travis CI job list.
 
 
 `0.3`_ (2018-11-15)
