@@ -15,9 +15,15 @@ DATABASES = {
     }
 }
 
-if os.environ.get("DB") == "mariadb":
+if os.environ.get("DB") in {"mysql", "mariadb"}:
     DATABASES = {
-        "default": {"ENGINE": "django.db.backends.mysql", "NAME": "tree_queries"}
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": "tree_queries",
+            "OPTIONS": {
+                "init_command": "SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"  # noqa
+            },
+        }
     }
 elif os.environ.get("DB") == "sqlite3":
     try:

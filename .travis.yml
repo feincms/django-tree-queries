@@ -1,12 +1,12 @@
+os: linux
 dist: xenial
-sudo: false
 language: python
 cache: pip
 python:
 - 3.7
 services:
   - postgresql
-matrix:
+jobs:
   fast_finish: true
   include:
     - python: 3.7
@@ -40,6 +40,27 @@ matrix:
       addons:
         mariadb: "10.3"
       before_install:
+        - sudo mysql -u root -e "DROP USER IF EXISTS 'travis'@'%';"
+        - sudo mysql -u root -e "CREATE USER 'travis'@'%';"
+        - sudo mysql -u root -e "DROP DATABASE IF EXISTS tree_queries;"
+        - sudo mysql -u root -e "CREATE DATABASE tree_queries;"
+        - sudo mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'travis'@'%';"
+      install:
+        - pip install -U pip wheel
+        - pip install Django mysqlclient
+        - python setup.py install
+    - python: 3.6
+      env: DB=mysql
+      services:
+        mysql
+      before_install:
+        - wget https://repo.mysql.com//mysql-apt-config_0.8.10-1_all.deb
+        - sudo dpkg -i mysql-apt-config_0.8.10-1_all.deb
+        - sudo apt-get update -q
+        - sudo apt-get install -q -y --allow-unauthenticated -o Dpkg::Options::=--force-confnew mysql-server
+        - sudo systemctl restart mysql
+        - sudo mysql_upgrade
+        - mysql --version
         - sudo mysql -u root -e "DROP USER IF EXISTS 'travis'@'%';"
         - sudo mysql -u root -e "CREATE USER 'travis'@'%';"
         - sudo mysql -u root -e "DROP DATABASE IF EXISTS tree_queries;"
