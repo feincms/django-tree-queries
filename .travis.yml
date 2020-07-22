@@ -9,8 +9,14 @@ services:
 jobs:
   fast_finish: true
   include:
-    - python: 3.7
+    - python: 3.8
       env: REQ="https://github.com/django/django/archive/master.zip#egg=Django"
+    - python: 3.8
+      env: REQ="Django>=3.1rc1,<3.2"
+    - python: 3.7
+      env: REQ="Django>=3.1rc1,<3.2"
+    - python: 3.6
+      env: REQ="Django>=3.1rc1,<3.2"
     - python: 3.7
       env: REQ="Django>=3.0,<3.1"
     - python: 3.6
@@ -77,7 +83,7 @@ jobs:
         - pip install https://github.com/karlb/pysqlite3/archive/master.zip
         - pip install Django
         - python setup.py install
-    - python: 3.7
+    - python: 3.8
       env: REQ="black flake8"
       install: skip
       script:
