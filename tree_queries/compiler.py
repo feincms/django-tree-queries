@@ -30,7 +30,7 @@ class TreeCompiler(SQLCompiler):
     ) AS (
         SELECT
             0 AS tree_depth,
-            array[T.{pk}]::text[] AS tree_path,
+            array[T.{pk}] AS tree_path,
             array[LPAD(CONCAT({order_by}), 20, '0')]::text[] AS tree_ordering,
             T."{pk}"
         FROM {db_table} T
@@ -40,7 +40,7 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             __tree.tree_depth + 1 AS tree_depth,
-            __tree.tree_path || T.{pk}::text,
+            __tree.tree_path || T.{pk},
             __tree.tree_ordering || LPAD(CONCAT({order_by}), 20, '0')::text,
             T."{pk}"
         FROM {db_table} T

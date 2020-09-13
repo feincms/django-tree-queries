@@ -12,6 +12,9 @@ Change log
   making things needlessly harder than they need to be. Made
   django-tree-queries compatible with Django's master branch.
 - Removed Python 3.4 from the Travis CI job list.
+- Dropped the conversion of primary keys to text on PostgreSQL. It's a
+  documented constraint that django-tree-queries only supports integer
+  primary keys, therefore the conversion wasn't necessary at all.
 
 
 `0.3`_ (2018-11-15)
