@@ -4,6 +4,10 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+
+`0.4`_ (2020-09-13)
+~~~~~~~~~~~~~~~~~~~
+
 - Fixed a grave bug where a position of ``110`` would be sorted before
   ``20`` for obvious reasons.
 - Added a custom ``TreeNodeForeignKey.deconstruct`` method to avoid
@@ -50,4 +54,5 @@ Change log
 .. _0.1: https://github.com/matthiask/django-tree-queries/commit/93d70046a2
 .. _0.2: https://github.com/matthiask/django-tree-queries/compare/0.1...0.2
 .. _0.3: https://github.com/matthiask/django-tree-queries/compare/0.2...0.3
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.3...master
+.. _0.4: https://github.com/matthiask/django-tree-queries/compare/0.3...0.4
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.4...master
