@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from django.db import connections
+from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
@@ -21,7 +21,7 @@ class TreeQuery(Query):
 
 
 class TreeCompiler(SQLCompiler):
-    CTE_POSTGRESQL = """
+    CTE_POSTGRESQL_WITH_TEXT_ORDERING = """
     WITH RECURSIVE __tree (
         "tree_depth",
         "tree_path",
@@ -42,6 +42,33 @@ class TreeCompiler(SQLCompiler):
             __tree.tree_depth + 1 AS tree_depth,
             __tree.tree_path || T.{pk},
             __tree.tree_ordering || LPAD(CONCAT({order_by}), 20, '0')::text,
+            T."{pk}"
+        FROM {db_table} T
+        JOIN __tree ON T."{parent}" = __tree.tree_pk
+    )
+    """
+
+    CTE_POSTGRESQL_WITH_INTEGER_ORDERING = """
+    WITH RECURSIVE __tree (
+        "tree_depth",
+        "tree_path",
+        "tree_ordering",
+        "tree_pk"
+    ) AS (
+        SELECT
+            0 AS tree_depth,
+            array[T.{pk}] AS tree_path,
+            array[{order_by}] AS tree_ordering,
+            T."{pk}"
+        FROM {db_table} T
+        WHERE T."{parent}" IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1 AS tree_depth,
+            __tree.tree_path || T.{pk},
+            __tree.tree_ordering || {order_by},
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -136,11 +163,16 @@ class TreeCompiler(SQLCompiler):
             )
 
         sql = super(TreeCompiler, self).as_sql(*args, **kwargs)
-        CTE = {
-            "postgresql": self.CTE_POSTGRESQL,
-            "sqlite": self.CTE_SQLITE3,
-            "mysql": self.CTE_MYSQL,
-        }[self.connection.vendor]
+        if self.connection.vendor == "postgresql":
+            CTE = (
+                self.CTE_POSTGRESQL_WITH_INTEGER_ORDERING
+                if _ordered_by_integer(opts, params)
+                else self.CTE_POSTGRESQL_WITH_TEXT_ORDERING
+            )
+        elif self.connection.vendor == "sqlite":
+            CTE = self.CTE_SQLITE3
+        elif self.connection.vendor == "mysql":
+            CTE = self.CTE_MYSQL
         return ("".join([CTE.format(**params), sql[0]]), sql[1])
 
     def get_converters(self, expressions):
@@ -164,3 +196,11 @@ def converter(value, expression, connection, context=None):
         return [int(v) for v in value]  # Maybe Field.to_python()?
     except ValueError:
         return value
+
+
+def _ordered_by_integer(opts, params):
+    try:
+        ordering_field = opts.get_field(params["order_by"])
+        return isinstance(ordering_field, models.IntegerField)
+    except Exception:
+        return False

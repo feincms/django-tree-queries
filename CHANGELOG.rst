@@ -15,6 +15,8 @@ Change log
 - Dropped the conversion of primary keys to text on PostgreSQL. It's a
   documented constraint that django-tree-queries only supports integer
   primary keys, therefore the conversion wasn't necessary at all.
+- Reverted to using integer arrays on PostgreSQL for ordering if
+  possible instead of always converting everything to padded strings.
 
 
 `0.3`_ (2018-11-15)
