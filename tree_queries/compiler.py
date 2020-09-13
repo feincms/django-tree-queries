@@ -52,7 +52,7 @@ class TreeCompiler(SQLCompiler):
     WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0,
-            -- Limit to max. 10 levels...
+            -- Limit to max. 50 levels...
             CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
             CAST(CONCAT("{sep}", LPAD(CONCAT({order_by}, "{sep}"), 20, "0"))
                 AS char(1000)),
