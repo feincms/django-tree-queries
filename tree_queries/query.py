@@ -38,6 +38,12 @@ def positional(count):
     return _dec
 
 
+class TreeManager(models.Manager):
+    def get_queryset(self):
+        queryset = super(TreeManager, self).get_queryset()
+        return queryset.with_tree_fields() if self._with_tree_fields else queryset
+
+
 class TreeQuerySet(models.QuerySet):
     def with_tree_fields(self, tree_fields=True):
         """
@@ -47,6 +53,15 @@ class TreeQuerySet(models.QuerySet):
         """
         self.query.__class__ = TreeQuery if tree_fields else Query
         return self
+
+    def as_manager(cls, *, with_tree_fields=False):
+        manager = TreeManager.from_queryset(cls)()
+        manager._built_with_as_manager = True
+        manager._with_tree_fields = with_tree_fields
+        return manager
+
+    as_manager.queryset_only = True
+    as_manager = classmethod(as_manager)
 
     @positional(2)
     def ancestors(self, of, include_self=False):

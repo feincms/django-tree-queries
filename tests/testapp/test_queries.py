@@ -6,7 +6,7 @@ from django.db.models import Count, Sum
 from django.test import TestCase
 
 from tree_queries.compiler import TreeQuery
-from .models import Model, UnorderedModel, StringOrderedModel
+from .models import AlwaysTreeQueryModel, Model, UnorderedModel, StringOrderedModel
 
 
 class Test(TestCase):
@@ -36,7 +36,6 @@ class Test(TestCase):
         self.assertFalse(hasattr(root, "tree_depth"))
         self.assertFalse(hasattr(root, "tree_ordering"))
         self.assertFalse(hasattr(root, "tree_path"))
-        self.assertFalse(hasattr(root, "tree_pk"))
 
     def test_attributes(self):
         tree = self.create_tree()
@@ -234,3 +233,18 @@ class Test(TestCase):
                 tree.child2_2,
             ],
         )
+
+    def test_always_tree_query(self):
+        AlwaysTreeQueryModel.objects.create(name="Nothing")
+        obj = AlwaysTreeQueryModel.objects.get()
+
+        self.assertTrue(hasattr(obj, "tree_depth"))
+        self.assertTrue(hasattr(obj, "tree_ordering"))
+        self.assertTrue(hasattr(obj, "tree_path"))
+
+        self.assertEqual(obj.tree_depth, 0)
+
+        AlwaysTreeQueryModel.objects.update(name="Something")
+        obj.refresh_from_db()
+        self.assertEqual(obj.name, "Something")
+        AlwaysTreeQueryModel.objects.all().delete()

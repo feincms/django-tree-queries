@@ -4,6 +4,9 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+- Added support for adding tree fields to queries by default. Create a
+  manager using ``TreeQuerySet.as_manager(with_tree_fields=True)``.
+
 
 `0.4`_ (2020-09-13)
 ~~~~~~~~~~~~~~~~~~~

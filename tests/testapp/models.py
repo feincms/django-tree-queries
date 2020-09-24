@@ -1,6 +1,7 @@
 from django.db import models
 
 from tree_queries.models import TreeNode
+from tree_queries.query import TreeQuerySet
 
 
 class Model(TreeNode):
@@ -27,3 +28,9 @@ class StringOrderedModel(TreeNode):
 
     def __str__(self):
         return self.name
+
+
+class AlwaysTreeQueryModel(TreeNode):
+    name = models.CharField(max_length=100)
+
+    objects = TreeQuerySet.as_manager(with_tree_fields=True)

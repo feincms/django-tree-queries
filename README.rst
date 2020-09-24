@@ -53,6 +53,9 @@ Usage
   loops.
 - Call the ``with_tree_fields()`` queryset method if you require the
   additional fields respectively the CTE.
+- Create a manager using
+  ``TreeQuerySet.as_manager(with_tree_fields=True)`` if you want to add
+  tree fields to queries by default.
 - Until documentation is more complete I'll have to refer you to the
   `test suite
   <https://github.com/matthiask/django-tree-queries/blob/master/tests/testapp/test_queries.py>`_
