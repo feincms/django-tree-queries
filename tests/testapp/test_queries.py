@@ -217,3 +217,20 @@ class Test(TestCase):
 
         positions = [m.position for m in Model.objects.with_tree_fields()]
         self.assertEqual(positions, list(sorted(positions)))
+
+    def test_bfs_ordering(self):
+        tree = self.create_tree()
+        nodes = Model.objects.with_tree_fields().extra(
+            order_by=["__tree.tree_depth", "__tree.tree_ordering"]
+        )
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child1,
+                tree.child2,
+                tree.child1_1,
+                tree.child2_1,
+                tree.child2_2,
+            ],
+        )
