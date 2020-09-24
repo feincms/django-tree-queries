@@ -54,7 +54,8 @@ class TreeQuerySet(models.QuerySet):
         self.query.__class__ = TreeQuery if tree_fields else Query
         return self
 
-    def as_manager(cls, *, with_tree_fields=False):
+    @positional(1)
+    def as_manager(cls, with_tree_fields=False):
         manager = TreeManager.from_queryset(cls)()
         manager._built_with_as_manager = True
         manager._with_tree_fields = with_tree_fields
