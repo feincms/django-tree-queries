@@ -6,7 +6,13 @@ from django.db.models import Count, Sum
 from django.test import TestCase
 
 from tree_queries.compiler import TreeQuery
-from .models import AlwaysTreeQueryModel, Model, UnorderedModel, StringOrderedModel
+from .models import (
+    AlwaysTreeQueryModel,
+    AlwaysTreeQueryModelCategory,
+    Model,
+    UnorderedModel,
+    StringOrderedModel,
+)
 
 
 class Test(TestCase):
@@ -248,3 +254,20 @@ class Test(TestCase):
         obj.refresh_from_db()
         self.assertEqual(obj.name, "Something")
         AlwaysTreeQueryModel.objects.all().delete()
+
+    def test_always_tree_query_relations(self):
+        c = AlwaysTreeQueryModelCategory.objects.create()
+
+        m1 = AlwaysTreeQueryModel.objects.create(name="Nothing", category=c)
+        m2 = AlwaysTreeQueryModel.objects.create(name="Something")
+
+        m1.related.add(m2)
+
+        m3 = m2.related.get()
+
+        self.assertEqual(m1, m3)
+        self.assertEqual(m3.tree_depth, 0)
+
+        m4 = c.instances.get()
+        self.assertEqual(m1, m4)
+        self.assertEqual(m4.tree_depth, 0)
