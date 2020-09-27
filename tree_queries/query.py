@@ -56,15 +56,14 @@ class TreeQuerySet(models.QuerySet):
 
     @positional(1)
     def as_manager(cls, with_tree_fields=False):
-        class _TreeManager(TreeManager.from_queryset(cls)):
-            # Only used in deconstruct:
-            _built_with_as_manager = True
-            # Set attribute on class, not on the instance so that the automatic
-            # subclass generation used e.g. for relations also finds this
-            # attribute.
-            _with_tree_fields = with_tree_fields
-
-        return _TreeManager()
+        Manager = TreeManager.from_queryset(cls)
+        # Only used in deconstruct:
+        Manager._built_with_as_manager = True
+        # Set attribute on class, not on the instance so that the automatic
+        # subclass generation used e.g. for relations also finds this
+        # attribute.
+        Manager._with_tree_fields = with_tree_fields
+        return Manager()
 
     as_manager.queryset_only = True
     as_manager = classmethod(as_manager)
