@@ -9,6 +9,8 @@ Change log
 - Ensured the availability of the ``with_tree_fields`` configuration
   also on subclassed managers, e.g. those used for traversing reverse
   relations.
+- Dropped compatibility with Django 1.8 to avoid adding workarounds to
+  the testsuite.
 
 
 `0.4`_ (2020-09-13)
