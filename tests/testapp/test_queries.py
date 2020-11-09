@@ -6,12 +6,13 @@ from django.db.models import Count, Sum
 from django.test import TestCase
 
 from tree_queries.compiler import TreeQuery
+
 from .models import (
     AlwaysTreeQueryModel,
     AlwaysTreeQueryModelCategory,
     Model,
-    UnorderedModel,
     StringOrderedModel,
+    UnorderedModel,
 )
 
 
