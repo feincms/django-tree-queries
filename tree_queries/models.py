@@ -33,7 +33,7 @@ class TreeNode(models.Model):
 
     def descendants(self, **kwargs):
         """
-        Returns all ancestors of the current node
+        Returns all descendants of the current node
 
         See ``TreeQuerySet.descendants`` for details and optional arguments.
         """
