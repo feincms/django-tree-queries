@@ -58,5 +58,5 @@ Usage
   tree fields to queries by default.
 - Until documentation is more complete I'll have to refer you to the
   `test suite
-  <https://github.com/matthiask/django-tree-queries/blob/master/tests/testapp/test_queries.py>`_
+  <https://github.com/matthiask/django-tree-queries/blob/main/tests/testapp/test_queries.py>`_
   for additional instructions and usage examples.
