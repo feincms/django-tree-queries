@@ -6,42 +6,21 @@ import django
 
 DATABASES = {
     "default": {
-        "ENGINE": (
-            "django.db.backends.postgresql"
-            if django.VERSION > (2,)
-            else "django.db.backends.postgresql_psycopg2"
-        ),
-        "NAME": "tree_queries",
-    }
+        "ENGINE": "django.db.backends.%s" % os.getenv("DB_BACKEND", "sqlite3"),
+        "NAME": os.getenv("DB_NAME", ":memory:"),
+        "USER": os.getenv("DB_USER"),
+        "PASSWORD": os.getenv("DB_PASSWORD"),
+        "HOST": os.getenv("DB_HOST", ""),
+        "PORT": os.getenv("DB_PORT", ""),
+        "TEST": {
+            "USER": "default_test",
+        },
+    },
 }
 
-if os.environ.get("DB") in {"mysql", "mariadb"}:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": "tree_queries",
-            "OPTIONS": {
-                "init_command": "SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"  # noqa
-            },
-        }
-    }
-elif os.environ.get("DB") == "sqlite3":
-    try:
-        import pysqlite3.dbapi2
-    except ImportError:
-        import sqlite3
-
-        sys.stdout.write("Running with pysqlite3 %s\n" % (sqlite3.sqlite_version_info,))
-    else:
-        sys.modules["sqlite3"] = pysqlite3
-        sys.modules["sqlite3.dbapi2"] = pysqlite3.dbapi2
-
-        sys.stdout.write(
-            "Running with pysqlite3 %s\n" % (pysqlite3.sqlite_version_info,)
-        )
-
-    DATABASES = {
-        "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
+if os.environ.get("DB_BACKEND") in {"mysql", "mariadb"}:
+    DATABASES["default"]["OPTIONS"] = {
+        "init_command": "SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"  # noqa
     }
 
 INSTALLED_APPS = [
