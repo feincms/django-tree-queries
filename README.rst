@@ -2,8 +2,9 @@
 django-tree-queries
 ===================
 
-.. image:: https://travis-ci.org/matthiask/django-tree-queries.svg?branch=master
-   :target: https://travis-ci.org/matthiask/django-tree-queries
+.. image:: https://github.com/matthiask/django-tree-queries/workflows/Tests/badge.svg
+    :target: https://github.com/matthiask/django-tree-queries/
+    :alt: CI Status
 
 Query Django model trees using adjacency lists and recursive common
 table expressions. Supports PostgreSQL, sqlite3 (3.8.3 or higher) and
