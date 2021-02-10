@@ -10,8 +10,8 @@ table expressions. Supports PostgreSQL, sqlite3 (3.8.3 or higher) and
 MariaDB (10.2.2 or higher) and MySQL (8.0 or higher, if running without
 ``ONLY_FULL_GROUP_BY``).
 
-Supports Django 1.11 or better, Python 2.7 and 3.4 or better. See the
-Travis CI build for more details.
+Supports Django 2.2 or better, Python 3.6 or better. See the GitHub actions
+build for more details.
 
 
 Features and limitations
