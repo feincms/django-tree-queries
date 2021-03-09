@@ -2,7 +2,7 @@
 django-tree-queries
 ===================
 
-.. image:: https://github.com/matthiask/django-tree-queries/workflows/Tests/badge.svg
+.. image:: https://github.com/matthiask/django-tree-queries/actions/workflows/test.yml/badge.svg
     :target: https://github.com/matthiask/django-tree-queries/
     :alt: CI Status
 
@@ -13,7 +13,6 @@ MariaDB (10.2.2 or higher) and MySQL (8.0 or higher, if running without
 
 Supports Django 2.2 or better, Python 3.6 or better. See the GitHub actions
 build for more details.
-
 
 Features and limitations
 ========================
@@ -41,6 +40,9 @@ Features and limitations
 - Supports only trees with max. 50 levels on MySQL/MariaDB, since those
   databases to not support arrays and require us to provide a maximum
   length for the ``tree_path`` and ``tree_ordering`` upfront.
+
+Here's a blog post offering some additional insight (hopefully) into the
+reasons for `django-tree-queries' existence <https://406.ch/writing/django-tree-queries/>`_.
 
 
 Usage
