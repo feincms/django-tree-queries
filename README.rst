@@ -38,7 +38,7 @@ Features and limitations
   structure (making it a graph). The ``TreeNode`` abstract model class
   has some protection against this.
 - Supports only trees with max. 50 levels on MySQL/MariaDB, since those
-  databases to not support arrays and require us to provide a maximum
+  databases do not support arrays and require us to provide a maximum
   length for the ``tree_path`` and ``tree_ordering`` upfront.
 
 Here's a blog post offering some additional insight (hopefully) into the
