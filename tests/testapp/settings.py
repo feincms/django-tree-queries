@@ -14,6 +14,7 @@ DATABASES = {
         },
     },
 }
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 if os.environ.get("DB_BACKEND") in {"mysql", "mariadb"}:
     DATABASES["default"]["OPTIONS"] = {
