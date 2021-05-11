@@ -93,13 +93,16 @@ class TreeQuerySet(models.QuerySet):
         connection = connections[self.db]
         if connection.vendor == "postgresql":
             queryset = self.with_tree_fields().extra(
-                where=["{pk} = ANY(__tree.tree_path)".format(pk=pk(of))]
+                where=["%s = ANY(__tree.tree_path)"],
+                params=[pk(of)],
             )
 
         else:
             queryset = self.with_tree_fields().extra(
                 # NOTE! The representation of tree_path is NOT part of the API.
                 where=[
+                    # XXX This *may* be unsafe with some primary key field types.
+                    # It is certainly safe with integers.
                     'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
                         pk=pk(of), sep=SEPARATOR
                     )
