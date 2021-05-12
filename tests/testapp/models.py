@@ -35,12 +35,16 @@ class AlwaysTreeQueryModelCategory(models.Model):
 
 
 class ReferenceModel(models.Model):
+    position = models.PositiveIntegerField(default=0)
     tree_field = models.ForeignKey(
         Model,
         on_delete=models.CASCADE,
         blank=True,
         null=True,
     )
+
+    class Meta:
+        ordering = ("position",)
 
 
 class AlwaysTreeQueryModel(TreeNode):

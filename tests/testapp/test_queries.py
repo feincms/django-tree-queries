@@ -278,13 +278,25 @@ class Test(TestCase):
         tree = self.create_tree()
 
         references = type(str("Namespace"), (), {})()  # SimpleNamespace for PY2...
-        references.none = ReferenceModel.objects.create()
-        references.root = ReferenceModel.objects.create(tree_field=tree.root)
-        references.child1 = ReferenceModel.objects.create(tree_field=tree.child1)
-        references.child2 = ReferenceModel.objects.create(tree_field=tree.child2)
-        references.child1_1 = ReferenceModel.objects.create(tree_field=tree.child1_1)
-        references.child2_1 = ReferenceModel.objects.create(tree_field=tree.child2_1)
-        references.child2_2 = ReferenceModel.objects.create(tree_field=tree.child2_2)
+        references.none = ReferenceModel.objects.create(position=0)
+        references.root = ReferenceModel.objects.create(
+            position=1, tree_field=tree.root
+        )
+        references.child1 = ReferenceModel.objects.create(
+            position=2, tree_field=tree.child1
+        )
+        references.child2 = ReferenceModel.objects.create(
+            position=3, tree_field=tree.child2
+        )
+        references.child1_1 = ReferenceModel.objects.create(
+            position=4, tree_field=tree.child1_1
+        )
+        references.child2_1 = ReferenceModel.objects.create(
+            position=5, tree_field=tree.child2_1
+        )
+        references.child2_2 = ReferenceModel.objects.create(
+            position=6, tree_field=tree.child2_2
+        )
 
         self.assertEqual(
             list(
@@ -318,7 +330,7 @@ class Test(TestCase):
                     | Q(tree_field__in=tree.child1.ancestors())
                 )
             ),
-            [references.child2_2, references.child1_1, references.root],
+            [references.root, references.child1_1, references.child2_2],
         )
 
         self.assertEqual(
@@ -355,7 +367,7 @@ class Test(TestCase):
                     | Q(tree_field__in=tree.child1.ancestors())
                 )
             ),
-            [references.child2_1, references.none, references.root],
+            [references.none, references.root, references.child2_1],
         )
 
         self.assertEqual(
