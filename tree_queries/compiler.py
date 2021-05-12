@@ -139,6 +139,12 @@ class TreeCompiler(SQLCompiler):
         }
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
+            tree_params = params.copy()
+            # use aliased table name (U0, U1, U2)
+            base_table = self.query.__dict__.get("base_table")
+            if base_table is not None:
+                tree_params["db_table"] = base_table
+
             self.query.add_extra(
                 # Do not add extra fields to the select statement when it is a
                 # summary query
@@ -150,7 +156,7 @@ class TreeCompiler(SQLCompiler):
                     "tree_ordering": "__tree.tree_ordering",
                 },
                 select_params=None,
-                where=["__tree.tree_pk = {db_table}.{pk}".format(**params)],
+                where=["__tree.tree_pk = {db_table}.{pk}".format(**tree_params)],
                 params=None,
                 tables=["__tree"],
                 order_by=(

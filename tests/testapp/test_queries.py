@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.test import TestCase
 
 from tree_queries.compiler import TreeQuery
@@ -11,6 +11,7 @@ from .models import (
     AlwaysTreeQueryModel,
     AlwaysTreeQueryModelCategory,
     Model,
+    ReferenceModel,
     StringOrderedModel,
     UnorderedModel,
 )
@@ -272,3 +273,110 @@ class Test(TestCase):
         m4 = c.instances.get()
         self.assertEqual(m1, m4)
         self.assertEqual(m4.tree_depth, 0)
+
+    def test_reference(self):
+        tree = self.create_tree()
+
+        references = type(str("Namespace"), (), {})()  # SimpleNamespace for PY2...
+        references.none = ReferenceModel.objects.create(position=0)
+        references.root = ReferenceModel.objects.create(
+            position=1, tree_field=tree.root
+        )
+        references.child1 = ReferenceModel.objects.create(
+            position=2, tree_field=tree.child1
+        )
+        references.child2 = ReferenceModel.objects.create(
+            position=3, tree_field=tree.child2
+        )
+        references.child1_1 = ReferenceModel.objects.create(
+            position=4, tree_field=tree.child1_1
+        )
+        references.child2_1 = ReferenceModel.objects.create(
+            position=5, tree_field=tree.child2_1
+        )
+        references.child2_2 = ReferenceModel.objects.create(
+            position=6, tree_field=tree.child2_2
+        )
+
+        self.assertEqual(
+            list(
+                ReferenceModel.objects.filter(
+                    tree_field__in=tree.child2.descendants(include_self=True)
+                )
+            ),
+            [references.child2, references.child2_1, references.child2_2],
+        )
+
+        self.assertEqual(
+            list(
+                ReferenceModel.objects.filter(
+                    Q(tree_field__in=tree.child2.ancestors(include_self=True))
+                    | Q(tree_field__in=tree.child2.descendants(include_self=True))
+                )
+            ),
+            [
+                references.root,
+                references.child2,
+                references.child2_1,
+                references.child2_2,
+            ],
+        )
+
+        self.assertEqual(
+            list(
+                ReferenceModel.objects.filter(
+                    Q(tree_field__in=tree.child2_2.descendants(include_self=True))
+                    | Q(tree_field__in=tree.child1.descendants())
+                    | Q(tree_field__in=tree.child1.ancestors())
+                )
+            ),
+            [references.root, references.child1_1, references.child2_2],
+        )
+
+        self.assertEqual(
+            list(
+                ReferenceModel.objects.exclude(
+                    Q(tree_field__in=tree.child2.ancestors(include_self=True))
+                    | Q(tree_field__in=tree.child2.descendants(include_self=True))
+                    | Q(tree_field__isnull=True)
+                )
+            ),
+            [references.child1, references.child1_1],
+        )
+
+        self.assertEqual(
+            list(
+                ReferenceModel.objects.exclude(
+                    Q(tree_field__in=tree.child2.descendants())
+                    | Q(tree_field__in=tree.child2.ancestors())
+                    | Q(tree_field__in=tree.child1.descendants(include_self=True))
+                    | Q(tree_field__in=tree.child1.ancestors())
+                )
+            ),
+            [references.none, references.child2],
+        )
+
+        self.assertEqual(
+            list(
+                ReferenceModel.objects.filter(
+                    Q(
+                        Q(tree_field__in=tree.child2.descendants())
+                        & ~Q(id=references.child2_2.id)
+                    )
+                    | Q(tree_field__isnull=True)
+                    | Q(tree_field__in=tree.child1.ancestors())
+                )
+            ),
+            [references.none, references.root, references.child2_1],
+        )
+
+        self.assertEqual(
+            list(
+                ReferenceModel.objects.filter(
+                    tree_field__in=tree.child2.descendants(include_self=True).filter(
+                        parent__in=tree.child2.descendants(include_self=True)
+                    )
+                )
+            ),
+            [references.child2_1, references.child2_2],
+        )
