@@ -34,6 +34,15 @@ class AlwaysTreeQueryModelCategory(models.Model):
     pass
 
 
+class ReferenceModel(models.Model):
+    tree_field = models.ForeignKey(
+        Model,
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
+
+
 class AlwaysTreeQueryModel(TreeNode):
     name = models.CharField(max_length=100)
     related = models.ManyToManyField("self", symmetrical=True)
