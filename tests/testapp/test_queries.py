@@ -281,6 +281,7 @@ class Test(TestCase):
         references.root = ReferenceModel.objects.create(tree_field=tree.root)
         references.child1 = ReferenceModel.objects.create(tree_field=tree.child1)
         references.child2_1 = ReferenceModel.objects.create(tree_field=tree.child2_1)
+        references.none = ReferenceModel.objects.create()
 
         self.assertEqual(
             list(
@@ -306,6 +307,7 @@ class Test(TestCase):
                 ReferenceModel.objects.exclude(
                     Q(tree_field__in=tree.child2.ancestors(include_self=True))
                     | Q(tree_field__in=tree.child2.descendants(include_self=True))
+                    | Q(tree_field__isnull=True)
                 )
             ),
             [references.child1],
