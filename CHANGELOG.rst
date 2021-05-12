@@ -4,6 +4,10 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+
+`0.5`_ (2021-05-12)
+~~~~~~~~~~~~~~~~~~~
+
 - Added support for adding tree fields to queries by default. Create a
   manager using ``TreeQuerySet.as_manager(with_tree_fields=True)``.
 - Ensured the availability of the ``with_tree_fields`` configuration
@@ -11,6 +15,8 @@ Change log
   relations.
 - Dropped compatibility with Django 1.8 to avoid adding workarounds to
   the testsuite.
+- Made it possible to use django-tree-queries in more situations involving
+  JOINs. Thanks Safa Alfulaij for the contribution!
 
 
 `0.4`_ (2020-09-13)
@@ -63,4 +69,5 @@ Change log
 .. _0.2: https://github.com/matthiask/django-tree-queries/compare/0.1...0.2
 .. _0.3: https://github.com/matthiask/django-tree-queries/compare/0.2...0.3
 .. _0.4: https://github.com/matthiask/django-tree-queries/compare/0.3...0.4
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.4...master
+.. _0.5: https://github.com/matthiask/django-tree-queries/compare/0.4...0.5
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.5...master
