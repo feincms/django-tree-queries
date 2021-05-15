@@ -188,12 +188,7 @@ class TreeCompiler(SQLCompiler):
             if not hasattr(expression, "sql"):
                 continue
 
-            if any(
-                [
-                    expression.sql == f
-                    for f in ("__tree.tree_path", "__tree.tree_ordering")
-                ]
-            ):
+            if expression.sql in {"__tree.tree_path", "__tree.tree_ordering"}:
                 converters[i] = ([converter], expression)
         return converters
 
