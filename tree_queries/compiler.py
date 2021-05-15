@@ -184,11 +184,16 @@ class TreeCompiler(SQLCompiler):
     def get_converters(self, expressions):
         converters = super(TreeCompiler, self).get_converters(expressions)
         for i, expression in enumerate(expressions):
-            # We care about tree fields only
-            if type(expression.output_field) != models.fields.Field:
+            # We care about tree fields and annotations only
+            if not hasattr(expression, "sql"):
                 continue
 
-            if any(f in str(expression) for f in ("tree_path", "tree_ordering")):
+            if any(
+                [
+                    expression.sql == f
+                    for f in ("__tree.tree_path", "__tree.tree_ordering")
+                ]
+            ):
                 converters[i] = ([converter], expression)
         return converters
 

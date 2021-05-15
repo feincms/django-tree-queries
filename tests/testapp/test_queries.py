@@ -390,10 +390,10 @@ class Test(TestCase):
             Q(id__in=tree.child2.ancestors(include_self=True))
             | Q(id__in=tree.child2.descendants(include_self=True))
         )
-        if connections[Model.objects.db].vendor == 'postgresql':
+        if connections[Model.objects.db].vendor == "postgresql":
             qs = qs.annotate(
                 is_my_field=RawSQL(
-                    '%s = ANY(__tree.tree_path)',
+                    "%s = ANY(__tree.tree_path)",
                     [pk(tree.child2_1)],
                     output_field=models.BooleanField(),
                 )
@@ -410,10 +410,7 @@ class Test(TestCase):
             )
 
         self.assertEqual(
-            [
-                (node, node.is_my_field)
-                for node in qs
-            ],
+            [(node, node.is_my_field) for node in qs],
             [
                 (tree.root, False),
                 (tree.child2, False),
