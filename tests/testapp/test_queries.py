@@ -2,10 +2,13 @@ from __future__ import unicode_literals
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.db import models
 from django.db.models import Count, Q, Sum
+from django.db.models.expressions import RawSQL
 from django.test import TestCase
 
-from tree_queries.compiler import TreeQuery
+from tree_queries.compiler import SEPARATOR, TreeQuery
+from tree_queries.query import pk
 
 from .models import (
     AlwaysTreeQueryModel,
@@ -379,4 +382,32 @@ class Test(TestCase):
                 )
             ),
             [references.child2_1, references.child2_2],
+        )
+
+    def test_annotate_tree(self):
+        tree = self.create_tree()
+        self.assertEqual(
+            [
+                (node, node.is_my_field)
+                for node in Model.objects.with_tree_fields()
+                .filter(
+                    Q(id__in=tree.child2.ancestors(include_self=True))
+                    | Q(id__in=tree.child2.descendants(include_self=True))
+                )
+                .annotate(
+                    is_my_field=RawSQL(
+                        'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
+                            pk=pk(tree.child2), sep=SEPARATOR
+                        ),
+                        [],
+                        output_field=models.BooleanField(),
+                    )
+                )
+            ],
+            [
+                (tree.root, False),
+                (tree.child2, True),
+                (tree.child2_1, True),
+                (tree.child2_2, True),
+            ],
         )
