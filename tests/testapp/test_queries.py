@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
 from django.test import TestCase
@@ -386,28 +386,38 @@ class Test(TestCase):
 
     def test_annotate_tree(self):
         tree = self.create_tree()
+        qs = Model.objects.with_tree_fields().filter(
+            Q(id__in=tree.child2.ancestors(include_self=True))
+            | Q(id__in=tree.child2.descendants(include_self=True))
+        )
+        if connections[Model.objects.db].vendor == 'postgresql':
+            qs = qs.annotate(
+                is_my_field=RawSQL(
+                    '%s = ANY(__tree.tree_path)',
+                    [pk(tree.child2_1)],
+                    output_field=models.BooleanField(),
+                )
+            )
+        else:
+            qs = qs.annotate(
+                is_my_field=RawSQL(
+                    'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
+                        pk=pk(tree.child2_1), sep=SEPARATOR
+                    ),
+                    [],
+                    output_field=models.BooleanField(),
+                )
+            )
+
         self.assertEqual(
             [
                 (node, node.is_my_field)
-                for node in Model.objects.with_tree_fields()
-                .filter(
-                    Q(id__in=tree.child2.ancestors(include_self=True))
-                    | Q(id__in=tree.child2.descendants(include_self=True))
-                )
-                .annotate(
-                    is_my_field=RawSQL(
-                        'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
-                            pk=pk(tree.child2), sep=SEPARATOR
-                        ),
-                        [],
-                        output_field=models.BooleanField(),
-                    )
-                )
+                for node in qs
             ],
             [
                 (tree.root, False),
-                (tree.child2, True),
+                (tree.child2, False),
                 (tree.child2_1, True),
-                (tree.child2_2, True),
+                (tree.child2_2, False),
             ],
         )
