@@ -387,8 +387,8 @@ class Test(TestCase):
     def test_annotate_tree(self):
         tree = self.create_tree()
         qs = Model.objects.with_tree_fields().filter(
-            Q(id__in=tree.child2.ancestors(include_self=True))
-            | Q(id__in=tree.child2.descendants(include_self=True))
+            Q(pk__in=tree.child2.ancestors(include_self=True))
+            | Q(pk__in=tree.child2.descendants(include_self=True))
         )
         if connections[Model.objects.db].vendor == "postgresql":
             qs = qs.annotate(

@@ -5,6 +5,7 @@ from tree_queries.query import TreeQuerySet
 
 
 class Model(TreeNode):
+    custom_id = models.AutoField(primary_key=True)
     position = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=100)
 
