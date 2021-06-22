@@ -80,7 +80,7 @@ class TreeQuerySet(models.QuerySet):
         ids = of.tree_path if include_self else of.tree_path[:-1]
         return (
             self.with_tree_fields()  # TODO tree fields not strictly required
-            .filter(id__in=ids)
+            .filter(pk__in=ids)
             .extra(order_by=["__tree.tree_depth"])
         )
 
