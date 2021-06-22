@@ -4,6 +4,9 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+- Fixed ``TreeQuerySet.ancestors`` to support primary keys not named ``id``.
+- Changed the tree compiler to only post-process its own database results.
+
 
 `0.5`_ (2021-05-12)
 ~~~~~~~~~~~~~~~~~~~
