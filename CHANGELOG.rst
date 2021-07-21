@@ -4,6 +4,10 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+
+`0.6`_ (2021-07-21)
+~~~~~~~~~~~~~~~~~~~
+
 - Fixed ``TreeQuerySet.ancestors`` to support primary keys not named ``id``.
 - Changed the tree compiler to only post-process its own database results.
 - Added ``**kwargs``-passing to ``TreeQuery.get_compiler`` for compatibility
@@ -75,4 +79,5 @@ Change log
 .. _0.3: https://github.com/matthiask/django-tree-queries/compare/0.2...0.3
 .. _0.4: https://github.com/matthiask/django-tree-queries/compare/0.3...0.4
 .. _0.5: https://github.com/matthiask/django-tree-queries/compare/0.4...0.5
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.5...master
+.. _0.6: https://github.com/matthiask/django-tree-queries/compare/0.5...0.6
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.6...main
