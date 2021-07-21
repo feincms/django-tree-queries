@@ -6,6 +6,8 @@ Change log
 
 - Fixed ``TreeQuerySet.ancestors`` to support primary keys not named ``id``.
 - Changed the tree compiler to only post-process its own database results.
+- Added ``**kwargs``-passing to ``TreeQuery.get_compiler`` for compatibility
+  with Django 4.0.
 
 
 `0.5`_ (2021-05-12)

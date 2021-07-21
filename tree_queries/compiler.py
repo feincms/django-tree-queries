@@ -9,7 +9,7 @@ SEPARATOR = "\x1f"
 
 
 class TreeQuery(Query):
-    def get_compiler(self, using=None, connection=None):
+    def get_compiler(self, using=None, connection=None, **kwargs):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
             raise ValueError("Need either using or connection")
@@ -17,7 +17,9 @@ class TreeQuery(Query):
             connection = connections[using]
         # Difference: Not connection.ops.compiler, but our own compiler which
         # adds the CTE.
-        return TreeCompiler(self, connection, using)
+
+        # **kwargs passes on elide_empty from Django 4.0 onwards
+        return TreeCompiler(self, connection, using, **kwargs)
 
 
 class TreeCompiler(SQLCompiler):
