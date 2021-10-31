@@ -4,6 +4,10 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+
+`0.7`_ (2021-10-31)
+~~~~~~~~~~~~~~~~~~~
+
 - Added a test with a tree node having a UUID as its primary key.
 
 
@@ -82,4 +86,5 @@ Change log
 .. _0.4: https://github.com/matthiask/django-tree-queries/compare/0.3...0.4
 .. _0.5: https://github.com/matthiask/django-tree-queries/compare/0.4...0.5
 .. _0.6: https://github.com/matthiask/django-tree-queries/compare/0.5...0.6
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.6...main
+.. _0.7: https://github.com/matthiask/django-tree-queries/compare/0.6...0.7
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.7...main
