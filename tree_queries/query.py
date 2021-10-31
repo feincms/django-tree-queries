@@ -94,7 +94,7 @@ class TreeQuerySet(models.QuerySet):
         if connection.vendor == "postgresql":
             queryset = self.with_tree_fields().extra(
                 where=["%s = ANY(__tree.tree_path)"],
-                params=[pk(of)],
+                params=[self.model._meta.pk.get_db_prep_value(pk(of), connection)],
             )
 
         else:
@@ -104,7 +104,8 @@ class TreeQuerySet(models.QuerySet):
                     # XXX This *may* be unsafe with some primary key field types.
                     # It is certainly safe with integers.
                     'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
-                        pk=pk(of), sep=SEPARATOR
+                        pk=self.model._meta.pk.get_db_prep_value(pk(of), connection),
+                        sep=SEPARATOR,
                     )
                 ]
             )

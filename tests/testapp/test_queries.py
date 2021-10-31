@@ -17,6 +17,7 @@ from .models import (
     ReferenceModel,
     StringOrderedModel,
     UnorderedModel,
+    UUIDModel,
 )
 
 
@@ -417,4 +418,19 @@ class Test(TestCase):
                 (tree.child2_1, True),
                 (tree.child2_2, False),
             ],
+        )
+
+    def test_uuid_queries(self):
+        root = UUIDModel.objects.create(name="root")
+        child1 = UUIDModel.objects.create(parent=root, name="child1")
+        child2 = UUIDModel.objects.create(parent=root, name="child2")
+
+        self.assertCountEqual(
+            root.descendants(),
+            {child1, child2},
+        )
+
+        self.assertEqual(
+            list(child1.ancestors(include_self=True)),
+            [root, child1],
         )

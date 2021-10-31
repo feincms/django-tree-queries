@@ -4,6 +4,8 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+- Added a test with a tree node having a UUID as its primary key.
+
 
 `0.6`_ (2021-07-21)
 ~~~~~~~~~~~~~~~~~~~
