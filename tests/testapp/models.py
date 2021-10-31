@@ -71,7 +71,5 @@ class UUIDModel(TreeNode):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     name = models.CharField(max_length=100)
 
-    objects = TreeQuerySet.as_manager(with_tree_fields=True)
-
     def __str__(self):
         return self.name
