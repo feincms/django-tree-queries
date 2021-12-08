@@ -142,10 +142,17 @@ class TreeCompiler(SQLCompiler):
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
+
             # use aliased table name (U0, U1, U2)
             base_table = self.query.__dict__.get("base_table")
             if base_table is not None:
                 tree_params["db_table"] = base_table
+
+            # When using tree queries in subqueries our base table may use
+            # an alias. Let's hope using the first alias is correct.
+            aliases = self.query.table_map.get(tree_params["db_table"])
+            if aliases:
+                tree_params["db_table"] = aliases[0]
 
             self.query.add_extra(
                 # Do not add extra fields to the select statement when it is a
