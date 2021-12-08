@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     # "tree_queries",
 ]
 
+USE_TZ = True
 MEDIA_ROOT = "/media/"
 STATIC_URL = "/static/"
 BASEDIR = os.path.dirname(__file__)
