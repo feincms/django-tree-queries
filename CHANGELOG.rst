@@ -4,12 +4,23 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.8...main
+
+
+`0.8`_ (2022-03-09)
+~~~~~~~~~~~~~~~~~~~
+
+.. _0.7: https://github.com/matthiask/django-tree-queries/compare/0.7...0.8
+
 - Added pre-commit configuration to automatically remove some old-ish code
   patterns.
+- Fixed a compatibility problem with the upcoming Django 4.1.
 
 
 `0.7`_ (2021-10-31)
 ~~~~~~~~~~~~~~~~~~~
+
+.. _0.7: https://github.com/matthiask/django-tree-queries/compare/0.6...0.7
 
 - Added a test with a tree node having a UUID as its primary key.
 
@@ -89,5 +100,3 @@ Change log
 .. _0.4: https://github.com/matthiask/django-tree-queries/compare/0.3...0.4
 .. _0.5: https://github.com/matthiask/django-tree-queries/compare/0.4...0.5
 .. _0.6: https://github.com/matthiask/django-tree-queries/compare/0.5...0.6
-.. _0.7: https://github.com/matthiask/django-tree-queries/compare/0.6...0.7
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.7...main
