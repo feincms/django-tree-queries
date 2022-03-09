@@ -4,6 +4,9 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
+- Added pre-commit configuration to automatically remove some old-ish code
+  patterns.
+
 
 `0.7`_ (2021-10-31)
 ~~~~~~~~~~~~~~~~~~~

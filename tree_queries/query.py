@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from functools import wraps
 
 from django.db import connections, models
@@ -40,7 +38,7 @@ def positional(count):
 
 class TreeManager(models.Manager):
     def get_queryset(self):
-        queryset = super(TreeManager, self).get_queryset()
+        queryset = super().get_queryset()
         return queryset.with_tree_fields() if self._with_tree_fields else queryset
 
 

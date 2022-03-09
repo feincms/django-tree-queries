@@ -1,16 +1,15 @@
-from __future__ import unicode_literals
-
-from datetime import date
 import os
 import re
 import subprocess
 import sys
+from datetime import date
+
 
 sys.path.append(os.path.abspath(".."))
 
 project = "django-tree-queries"
 author = "Feinheit AG"
-copyright = "2018-%s, %s" % (date.today().year, author)
+copyright = f"2018-{date.today().year}, {author}"
 version = __import__("tree_queries").__version__
 release = subprocess.check_output(
     "git fetch --tags; git describe", shell=True, universal_newlines=True

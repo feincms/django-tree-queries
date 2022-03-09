@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
@@ -177,7 +175,7 @@ class TreeCompiler(SQLCompiler):
                 ),
             )
 
-        sql = super(TreeCompiler, self).as_sql(*args, **kwargs)
+        sql = super().as_sql(*args, **kwargs)
         if self.connection.vendor == "postgresql":
             CTE = (
                 self.CTE_POSTGRESQL_WITH_INTEGER_ORDERING
@@ -191,7 +189,7 @@ class TreeCompiler(SQLCompiler):
         return ("".join([CTE.format(**params), sql[0]]), sql[1])
 
     def get_converters(self, expressions):
-        converters = super(TreeCompiler, self).get_converters(expressions)
+        converters = super().get_converters(expressions)
         for i, expression in enumerate(expressions):
             # We care about tree fields and annotations only
             if not hasattr(expression, "sql"):

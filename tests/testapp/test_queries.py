@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import connections, models
@@ -23,7 +21,7 @@ from .models import (
 
 class Test(TestCase):
     def create_tree(self):
-        tree = type(str("Namespace"), (), {})()  # SimpleNamespace for PY2...
+        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
         tree.root = Model.objects.create(name="root")
         tree.child1 = Model.objects.create(parent=tree.root, position=0, name="1")
         tree.child2 = Model.objects.create(parent=tree.root, position=1, name="2")
@@ -178,10 +176,8 @@ class Test(TestCase):
                 model = Model
                 fields = ["parent"]
 
-        html = "{}".format(Form())
-        self.assertIn(
-            '<option value="{}">--- --- 2-1</option>'.format(tree.child2_1.pk), html
-        )
+        html = f"{Form()}"
+        self.assertIn(f'<option value="{tree.child2_1.pk}">--- --- 2-1</option>', html)
         self.assertIn("root", html)
 
         class OtherForm(forms.Form):
@@ -195,14 +191,12 @@ class Test(TestCase):
                 queryset=tree.child2.descendants(),
             )
 
-        html = "{}".format(OtherForm())
-        self.assertIn(
-            '<option value="{}">*** *** 2-1</option>'.format(tree.child2_1.pk), html
-        )
+        html = f"{OtherForm()}"
+        self.assertIn(f'<option value="{tree.child2_1.pk}">*** *** 2-1</option>', html)
         self.assertNotIn("root", html)
 
     def test_string_ordering(self):
-        tree = type(str("Namespace"), (), {})()  # SimpleNamespace for PY2...
+        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
 
         tree.p1 = StringOrderedModel.objects.create(name="p1")
         tree.p2 = StringOrderedModel.objects.create(name="p2")
@@ -224,7 +218,7 @@ class Test(TestCase):
     def test_many_ordering(self):
         root = Model.objects.create(position=1, name="root")
         for i in range(20, 0, -1):
-            Model.objects.create(parent=root, name="Node {}".format(i), position=i * 10)
+            Model.objects.create(parent=root, name=f"Node {i}", position=i * 10)
 
         positions = [m.position for m in Model.objects.with_tree_fields()]
         self.assertEqual(positions, list(sorted(positions)))
@@ -281,7 +275,7 @@ class Test(TestCase):
     def test_reference(self):
         tree = self.create_tree()
 
-        references = type(str("Namespace"), (), {})()  # SimpleNamespace for PY2...
+        references = type("Namespace", (), {})()  # SimpleNamespace for PY2...
         references.none = ReferenceModel.objects.create(position=0)
         references.root = ReferenceModel.objects.create(
             position=1, tree_field=tree.root

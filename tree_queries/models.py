@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -44,7 +42,7 @@ class TreeNode(models.Model):
         Raises a validation error if saving this instance would result in loops
         in the tree structure
         """
-        super(TreeNode, self).clean()
+        super().clean()
         if (
             self.parent_id
             and self.pk
