@@ -7,6 +7,20 @@ SEPARATOR = "\x1f"
 
 
 class TreeQuery(Query):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_query()
+
+    def _setup_query(self):
+        """
+        Run on initialization and at the end of chaining. Any attributes that
+        would normally be set in __init__() should go here instead.
+        """
+        # Only add the sibling_order attribute if the query doesn't already have one to preserve cloning behavior
+        if not hasattr(self, 'sibling_order'):
+            # Add an attribute to control the ordering of siblings within trees
+            self.sibling_order = self.model._meta.ordering[0] if self.model._meta.ordering else self.model._meta.pk.attname
+
     def get_compiler(self, using=None, connection=None, **kwargs):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
@@ -134,7 +148,7 @@ class TreeCompiler(SQLCompiler):
             "parent": "parent_id",  # XXX Hardcoded.
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
-            "order_by": opts.ordering[0] if opts.ordering else opts.pk.attname,
+            "order_by": self.query.sibling_order,
             "sep": SEPARATOR,
         }
 
