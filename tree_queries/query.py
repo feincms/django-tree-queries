@@ -50,7 +50,7 @@ class TreeQuerySet(models.QuerySet):
         Pass ``False`` to revert to a queryset without tree fields.
         """
         if tree_fields:
-            self.query.__class__ = TreeQuery 
+            self.query.__class__ = TreeQuery
             self.query._setup_query()
         else:
             self.query.__class__ = Query
@@ -59,6 +59,7 @@ class TreeQuerySet(models.QuerySet):
     def order_siblings_by(self, order_by):
         """
         Sets TreeQuery sibling_order attribute
+
         Pass the name of a single model field as a string
         to order tree siblings by that model field
         """

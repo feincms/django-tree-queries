@@ -6,6 +6,9 @@ Change log
 
 .. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.8...main
 
+- Added ``TreeQuerySet.order_siblings_by`` which allows specifying an ordering
+  for siblings per-query.
+
 
 `0.8`_ (2022-03-09)
 ~~~~~~~~~~~~~~~~~~~

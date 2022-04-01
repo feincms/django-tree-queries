@@ -17,9 +17,13 @@ class TreeQuery(Query):
         would normally be set in __init__() should go here instead.
         """
         # Only add the sibling_order attribute if the query doesn't already have one to preserve cloning behavior
-        if not hasattr(self, 'sibling_order'):
+        if not hasattr(self, "sibling_order"):
             # Add an attribute to control the ordering of siblings within trees
-            self.sibling_order = self.model._meta.ordering[0] if self.model._meta.ordering else self.model._meta.pk.attname
+            self.sibling_order = (
+                self.model._meta.ordering[0]
+                if self.model._meta.ordering
+                else self.model._meta.pk.attname
+            )
 
     def get_compiler(self, using=None, connection=None, **kwargs):
         # Copied from django/db/models/sql/query.py

@@ -12,11 +12,11 @@ from .models import (
     AlwaysTreeQueryModel,
     AlwaysTreeQueryModelCategory,
     Model,
+    MultiOrderedModel,
     ReferenceModel,
     StringOrderedModel,
     UnorderedModel,
     UUIDModel,
-    MultiOrderedModel,
 )
 
 
@@ -434,11 +434,21 @@ class Test(TestCase):
         tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
 
         tree.root = MultiOrderedModel.objects.create(name="root")
-        tree.child1 = MultiOrderedModel.objects.create(parent=tree.root, first_position=0, second_position=1, name="1")
-        tree.child2 = MultiOrderedModel.objects.create(parent=tree.root, first_position=1, second_position=0, name="2")
-        tree.child1_1 = MultiOrderedModel.objects.create(parent=tree.child1, first_position=0, second_position=1, name="1-1")
-        tree.child2_1 = MultiOrderedModel.objects.create(parent=tree.child2, first_position=0, second_position=1, name="2-1")
-        tree.child2_2 = MultiOrderedModel.objects.create(parent=tree.child2, first_position=1, second_position=0, name="2-2")
+        tree.child1 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=0, second_position=1, name="1"
+        )
+        tree.child2 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=1, second_position=0, name="2"
+        )
+        tree.child1_1 = MultiOrderedModel.objects.create(
+            parent=tree.child1, first_position=0, second_position=1, name="1-1"
+        )
+        tree.child2_1 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=0, second_position=1, name="2-1"
+        )
+        tree.child2_2 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=1, second_position=0, name="2-2"
+        )
 
         first_order = [
             tree.root,
@@ -458,11 +468,11 @@ class Test(TestCase):
             tree.child1_1,
         ]
 
-        nodes = MultiOrderedModel.objects.order_siblings_by('second_position')
+        nodes = MultiOrderedModel.objects.order_siblings_by("second_position")
         self.assertEqual(list(nodes), second_order)
 
         nodes = MultiOrderedModel.objects.with_tree_fields()
         self.assertEqual(list(nodes), first_order)
 
-        nodes = MultiOrderedModel.objects.order_siblings_by('second_position').all()
+        nodes = MultiOrderedModel.objects.order_siblings_by("second_position").all()
         self.assertEqual(list(nodes), second_order)
