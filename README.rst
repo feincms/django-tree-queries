@@ -29,7 +29,7 @@ Features and limitations
   primary keys and ``tree_ordering`` an array of values used for
   ordering nodes within their siblings.
 - Besides adding the fields mentioned above the package only adds
-  queryset methods for filtering ancestors and descendants. Other
+  queryset methods for ordering siblings and filtering ancestors and descendants. Other
   features may be useful, but will not be added to the package just
   because it's possible to do so.
 - Little code, and relatively simple when compared to other tree
@@ -56,6 +56,8 @@ Usage
   loops.
 - Call the ``with_tree_fields()`` queryset method if you require the
   additional fields respectively the CTE.
+- Call the ``order_siblings_by('ModelFieldName')`` queryset method if you want to
+  order tree siblings by a specific model field.
 - Create a manager using
   ``TreeQuerySet.as_manager(with_tree_fields=True)`` if you want to add
   tree fields to queries by default.
