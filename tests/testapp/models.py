@@ -73,3 +73,15 @@ class UUIDModel(TreeNode):
 
     def __str__(self):
         return self.name
+
+
+class MultiOrderedModel(TreeNode):
+    first_position = models.PositiveIntegerField(default=0)
+    second_position = models.PositiveIntegerField(default=0)
+    name = models.CharField(max_length=100)
+
+    class Meta:
+        ordering = ("first_position",)
+
+    def __str__(self):
+        return self.name
