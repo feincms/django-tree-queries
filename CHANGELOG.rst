@@ -4,7 +4,13 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.8...main
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.9...main
+
+
+`0.9`_ (2022-04-01)
+~~~~~~~~~~~~~~~~~~~
+
+.. _0.9: https://github.com/matthiask/django-tree-queries/compare/0.8...0.9
 
 - Added ``TreeQuerySet.order_siblings_by`` which allows specifying an ordering
   for siblings per-query.
@@ -13,7 +19,7 @@ Change log
 `0.8`_ (2022-03-09)
 ~~~~~~~~~~~~~~~~~~~
 
-.. _0.7: https://github.com/matthiask/django-tree-queries/compare/0.7...0.8
+.. _0.8: https://github.com/matthiask/django-tree-queries/compare/0.7...0.8
 
 - Added pre-commit configuration to automatically remove some old-ish code
   patterns.
