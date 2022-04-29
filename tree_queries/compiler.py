@@ -187,8 +187,16 @@ class TreeCompiler(SQLCompiler):
                 order_by=(
                     []
                     # Do not add ordering for aggregates, or if the ordering
-                    # has already been specified using .extra()
-                    if is_summary or self.query.extra_order_by
+                    # has already been specified using .extra(),
+                    # or for distinct queries because of a Django bug:
+                    #   In the SQL compiler Django uses two different ways to determine
+                    #   the index number of a column alias, compare
+                    #   https://github.com/django/django/blob/stable/2.2.x/django/db/models/sql/compiler.py#L508
+                    #   https://github.com/django/django/blob/stable/2.2.x/django/db/models/sql/compiler.py#L605
+                    #   In the loop around line 508 only used columns are counted whereas
+                    #   in line 605 an enumeration is used which skips certain index numbers.
+                    #   FIXME: File a proper Django bug report
+                    if is_summary or self.query.extra_order_by or (self.query.subquery and self.query.distinct)
                     else ["__tree.tree_ordering"]  # DFS is the only true way
                 ),
             )
