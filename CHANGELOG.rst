@@ -4,7 +4,16 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.9...main
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.10...main
+
+
+`0.10`_ (2022-06-07)
+~~~~~~~~~~~~~~~~~~~~
+
+.. _0.10: https://github.com/matthiask/django-tree-queries/compare/0.9...0.10
+
+- Fixed ordering by string fields to actually work correctly in the presence of
+  values of varying length.
 
 
 `0.9`_ (2022-04-01)
