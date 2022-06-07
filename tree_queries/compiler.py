@@ -49,7 +49,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             0 AS tree_depth,
             array[T.{pk}] AS tree_path,
-            array[LPAD(CONCAT({order_by}), 20, '0')]::text[] AS tree_ordering,
+            array[{order_by}]::text[] AS tree_ordering,
             T."{pk}"
         FROM {db_table} T
         WHERE T."{parent}" IS NULL
@@ -59,7 +59,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             __tree.tree_depth + 1 AS tree_depth,
             __tree.tree_path || T.{pk},
-            __tree.tree_ordering || LPAD(CONCAT({order_by}), 20, '0')::text,
+            __tree.tree_ordering || {order_by}::text,
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -93,7 +93,7 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
-    CTE_MYSQL = """
+    CTE_MYSQL_WITH_INTEGER_ORDERING = """
     WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0,
@@ -117,7 +117,31 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
-    CTE_SQLITE3 = """
+    CTE_MYSQL_WITH_TEXT_ORDERING = """
+    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+        SELECT
+            0,
+            -- Limit to max. 50 levels...
+            CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
+            CAST(CONCAT("{sep}", CONCAT({order_by}, "{sep}"))
+                AS char(1000)),
+            T.{pk}
+        FROM {db_table} T
+        WHERE T.{parent} IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1,
+            CONCAT(__tree.tree_path, T2.{pk}, "{sep}"),
+            CONCAT(__tree.tree_ordering, CONCAT(T2.{order_by}, "{sep}")),
+            T2.{pk}
+        FROM __tree, {db_table} T2
+        WHERE __tree.tree_pk = T2.{parent}
+    )
+    """
+
+    CTE_SQLITE3_WITH_INTEGER_ORDERING = """
     WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0 tree_depth,
@@ -133,6 +157,28 @@ class TreeCompiler(SQLCompiler):
             __tree.tree_depth + 1,
             __tree.tree_path || printf("%%s{sep}", T.{pk}),
             __tree.tree_ordering || printf("%%020s{sep}", T.{order_by}),
+            T."{pk}"
+        FROM {db_table} T
+        JOIN __tree ON T."{parent}" = __tree.tree_pk
+    )
+    """
+
+    CTE_SQLITE3_WITH_TEXT_ORDERING = """
+    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+        SELECT
+            0 tree_depth,
+            printf("{sep}%%s{sep}", {pk}) tree_path,
+            printf("{sep}%%s{sep}", {order_by}) tree_ordering,
+            T."{pk}" tree_pk
+        FROM {db_table} T
+        WHERE T."{parent}" IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1,
+            __tree.tree_path || printf("%%s{sep}", T.{pk}),
+            __tree.tree_ordering || printf("%%s{sep}", T.{order_by}),
             T."{pk}"
         FROM {db_table} T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
@@ -201,9 +247,17 @@ class TreeCompiler(SQLCompiler):
                 else self.CTE_POSTGRESQL_WITH_TEXT_ORDERING
             )
         elif self.connection.vendor == "sqlite":
-            CTE = self.CTE_SQLITE3
+            CTE = (
+                self.CTE_SQLITE3_WITH_INTEGER_ORDERING
+                if _ordered_by_integer(opts, params)
+                else self.CTE_SQLITE3_WITH_TEXT_ORDERING
+            )
         elif self.connection.vendor == "mysql":
-            CTE = self.CTE_MYSQL
+            CTE = (
+                self.CTE_MYSQL_WITH_INTEGER_ORDERING
+                if _ordered_by_integer(opts, params)
+                else self.CTE_MYSQL_WITH_TEXT_ORDERING
+            )
         return ("".join([CTE.format(**params), sql[0]]), sql[1])
 
     def get_converters(self, expressions):

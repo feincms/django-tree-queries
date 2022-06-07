@@ -199,21 +199,58 @@ class Test(TestCase):
     def test_string_ordering(self):
         tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
 
-        tree.p1 = StringOrderedModel.objects.create(name="p1")
-        tree.p2 = StringOrderedModel.objects.create(name="p2")
-        tree.c1 = StringOrderedModel.objects.create(name="c1", parent=tree.p1)
-        tree.c2 = StringOrderedModel.objects.create(name="c2", parent=tree.p1)
+        tree.americas = StringOrderedModel.objects.create(name="Americas")
+        tree.europe = StringOrderedModel.objects.create(name="Europe")
+        tree.france = StringOrderedModel.objects.create(
+            name="France", parent=tree.europe
+        )
+        tree.south_america = StringOrderedModel.objects.create(
+            name="South America", parent=tree.americas
+        )
+        tree.ecuador = StringOrderedModel.objects.create(
+            name="Ecuador", parent=tree.south_america
+        )
+        tree.colombia = StringOrderedModel.objects.create(
+            name="Colombia", parent=tree.south_america
+        )
+        tree.peru = StringOrderedModel.objects.create(
+            name="Peru", parent=tree.south_america
+        )
+        tree.north_america = StringOrderedModel.objects.create(
+            name="North America", parent=tree.americas
+        )
 
         self.assertEqual(
             list(StringOrderedModel.objects.with_tree_fields()),
-            [tree.p1, tree.c1, tree.c2, tree.p2],
+            [
+                tree.americas,
+                tree.north_america,
+                tree.south_america,
+                tree.colombia,
+                tree.ecuador,
+                tree.peru,
+                tree.europe,
+                tree.france,
+            ],
         )
 
-        self.assertEqual(list(tree.c1.ancestors(include_self=True)), [tree.p1, tree.c1])
+        self.assertEqual(
+            list(tree.peru.ancestors(include_self=True)),
+            [tree.americas, tree.south_america, tree.peru],
+        )
 
         self.assertEqual(
-            list(StringOrderedModel.objects.descendants(tree.p1, include_self=True)),
-            [tree.p1, tree.c1, tree.c2],
+            list(
+                StringOrderedModel.objects.descendants(tree.americas, include_self=True)
+            ),
+            [
+                tree.americas,
+                tree.north_america,
+                tree.south_america,
+                tree.colombia,
+                tree.ecuador,
+                tree.peru,
+            ],
         )
 
     def test_many_ordering(self):
