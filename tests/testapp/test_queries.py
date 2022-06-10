@@ -106,9 +106,16 @@ class Test(TestCase):
         tree = self.create_tree()
         self.assertEqual(Model.objects.count(), 6)
         self.assertEqual(Model.objects.with_tree_fields().count(), 6)
+        self.assertEqual(Model.objects.with_tree_fields().distinct().count(), 6)
 
         self.assertEqual(list(Model.objects.descendants(tree.child1)), [tree.child1_1])
         self.assertEqual(Model.objects.descendants(tree.child1).count(), 1)
+        self.assertEqual(Model.objects.descendants(tree.child1).distinct().count(), 1)
+
+        # .distinct() shouldn't always remove tree fields
+        qs = list(Model.objects.with_tree_fields().distinct())
+        self.assertEqual(qs[0].tree_depth, 0)
+        self.assertEqual(qs[5].tree_depth, 2)
 
     def test_annotate(self):
         tree = self.create_tree()

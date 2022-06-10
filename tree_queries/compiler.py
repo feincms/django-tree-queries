@@ -186,8 +186,23 @@ class TreeCompiler(SQLCompiler):
     """
 
     def as_sql(self, *args, **kwargs):
-        # Summary queries are aggregates (not annotations)
-        is_summary = any(  # pragma: no branch
+        # The general idea is that if we have a summary query (e.g. .count())
+        # then we do not want to ask Django to add the tree fields to the query
+        # using .query.add_extra. The way to determine whether we have a
+        # summary query on our hands is to check the is_summary attribute of
+        # all annotations.
+        #
+        # A new case appeared in the GitHub issue #26: Queries using
+        # .distinct().count() crashed. The reason for this is that Django uses
+        # a distinct subquery *without* annotations -- the annotations are kept
+        # in the surrounding query. Because of this we look at the distinct and
+        # subquery attributes.
+        #
+        # I am not confident that this is the perfect way to approach this
+        # problem but I just gotta stop worrying and trust the testsuite.
+        skip_tree_fields = (
+            self.query.distinct and self.query.subquery
+        ) or any(  # pragma: no branch
             # OK if generator is not consumed completely
             annotation.is_summary
             for alias, annotation in self.query.annotations.items()
@@ -220,7 +235,7 @@ class TreeCompiler(SQLCompiler):
                 # Do not add extra fields to the select statement when it is a
                 # summary query
                 select={}
-                if is_summary
+                if skip_tree_fields
                 else {
                     "tree_depth": "__tree.tree_depth",
                     "tree_path": "__tree.tree_path",
@@ -234,7 +249,7 @@ class TreeCompiler(SQLCompiler):
                     []
                     # Do not add ordering for aggregates, or if the ordering
                     # has already been specified using .extra()
-                    if is_summary or self.query.extra_order_by
+                    if skip_tree_fields or self.query.extra_order_by
                     else ["__tree.tree_ordering"]  # DFS is the only true way
                 ),
             )
