@@ -4,7 +4,17 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.10...main
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.11...main
+
+
+`0.11`_ (2022-06-10)
+~~~~~~~~~~~~~~~~~~~~
+
+.. _0.11: https://github.com/matthiask/django-tree-queries/compare/0.10...0.11
+
+- Fixed a crash when running ``.with_tree_fields().distinct().count()`` by 1.
+  avoiding to select tree fields in distinct subqueries and 2. trusting the
+  testsuite.
 
 
 `0.10`_ (2022-06-07)
