@@ -70,3 +70,13 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+if os.getenv("SQL"):  # pragma: no cover
+    from django.utils.log import DEFAULT_LOGGING as LOGGING
+
+    LOGGING["handlers"]["console"]["level"] = "DEBUG"
+    LOGGING["loggers"]["django.db.backends"] = {
+        "level": "DEBUG",
+        "handlers": ["console"],
+        "propagate": False,
+    }

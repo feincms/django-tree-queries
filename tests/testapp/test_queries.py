@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.db import connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from tree_queries.compiler import SEPARATOR, TreeQuery
 from tree_queries.query import pk
@@ -20,6 +20,7 @@ from .models import (
 )
 
 
+@override_settings(DEBUG=True)
 class Test(TestCase):
     def create_tree(self):
         tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
