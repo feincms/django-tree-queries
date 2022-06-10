@@ -57,7 +57,11 @@ Usage
 - Call the ``with_tree_fields()`` queryset method if you require the
   additional fields respectively the CTE.
 - Call the ``order_siblings_by("field_name")`` queryset method if you want to
-  order tree siblings by a specific model field.
+  order tree siblings by a specific model field. Note that Django's standard
+  ``order_by()`` method isn't supported -- nodes are returned according to the
+  `depth-first search algorithm
+  <https://en.wikipedia.org/wiki/Depth-first_search>`__. It's not possible to
+  order siblings by more than one field either.
 - Create a manager using
   ``TreeQuerySet.as_manager(with_tree_fields=True)`` if you want to add
   tree fields to queries by default.
