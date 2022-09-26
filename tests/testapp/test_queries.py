@@ -521,3 +521,22 @@ class Test(TestCase):
 
         nodes = MultiOrderedModel.objects.order_siblings_by("second_position").all()
         self.assertEqual(list(nodes), second_order)
+
+    def test_depth_filter(self):
+        tree = self.create_tree()
+
+        nodes = Model.objects.with_tree_fields().extra(
+            where=["__tree.tree_depth between %s and %s"],
+            params=[0, 1],
+        )
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child1,
+                # tree.child1_1,
+                tree.child2,
+                # tree.child2_1,
+                # tree.child2_2,
+            ],
+        )
