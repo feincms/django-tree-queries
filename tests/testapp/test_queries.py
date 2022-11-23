@@ -185,7 +185,7 @@ class Test(TestCase):
                 model = Model
                 fields = ["parent"]
 
-        html = f"{Form()}"
+        html = f"{Form().as_table()}"
         self.assertIn(f'<option value="{tree.child2_1.pk}">--- --- 2-1</option>', html)
         self.assertIn("root", html)
 
@@ -200,7 +200,7 @@ class Test(TestCase):
                 queryset=tree.child2.descendants(),
             )
 
-        html = f"{OtherForm()}"
+        html = f"{OtherForm().as_table()}"
         self.assertIn(f'<option value="{tree.child2_1.pk}">*** *** 2-1</option>', html)
         self.assertNotIn("root", html)
 
