@@ -4,7 +4,13 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.11...main
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.12...main
+
+
+`0.12`_ (2022-11-30)
+~~~~~~~~~~~~~~~~~~~~
+
+.. _0.12: https://github.com/matthiask/django-tree-queries/compare/0.11...0.12
 
 - Removed compatibility with Django < 3.2, Python < 3.8.
 - Added Django 4.1 to the CI.
