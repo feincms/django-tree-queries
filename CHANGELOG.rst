@@ -8,6 +8,8 @@ Change log
 
 - Removed compatibility with Django < 3.2, Python < 3.8.
 - Added Django 4.1 to the CI.
+- Fixed ``.with_tree_fields().explain()`` on some databases. Thanks Bryan
+  Culver!
 
 
 `0.11`_ (2022-06-10)

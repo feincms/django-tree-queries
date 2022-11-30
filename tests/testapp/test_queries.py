@@ -542,7 +542,6 @@ class Test(TestCase):
         )
 
     def test_explain(self):
-        from django.db.utils import OperationalError
-
-        with self.assertRaises(OperationalError):
-            print(Model.objects.with_tree_fields().explain())
+        if connections[Model.objects.db].vendor == "postgresql":
+            explanation = Model.objects.with_tree_fields().explain()
+            self.assertIn("CTE", explanation)
