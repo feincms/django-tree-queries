@@ -273,7 +273,12 @@ class TreeCompiler(SQLCompiler):
                 if _ordered_by_integer(opts, params)
                 else self.CTE_MYSQL_WITH_TEXT_ORDERING
             )
-        return ("".join([CTE.format(**params), sql[0]]), sql[1])
+        sql_explain = ""
+        sql_0 = sql[0]
+        if sql_0.startswith("EXPLAIN"):
+            sql_0 = sql_0.split(' ', 1)[1]
+            sql_explain = "EXPLAIN"
+        return ("".join([sql_explain, CTE.format(**params), sql_0]), sql[1])
 
     def get_converters(self, expressions):
         converters = super().get_converters(expressions)
