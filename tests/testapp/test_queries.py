@@ -540,3 +540,9 @@ class Test(TestCase):
                 # tree.child2_2,
             ],
         )
+
+    def test_explain(self):
+        from django.db.utils import OperationalError
+
+        with self.assertRaises(OperationalError):
+            print(Model.objects.with_tree_fields().explain())
