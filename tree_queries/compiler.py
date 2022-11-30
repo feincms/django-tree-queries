@@ -254,7 +254,6 @@ class TreeCompiler(SQLCompiler):
                 ),
             )
 
-        sql = super().as_sql(*args, **kwargs)
         if self.connection.vendor == "postgresql":
             CTE = (
                 self.CTE_POSTGRESQL_WITH_INTEGER_ORDERING
@@ -273,12 +272,11 @@ class TreeCompiler(SQLCompiler):
                 if _ordered_by_integer(opts, params)
                 else self.CTE_MYSQL_WITH_TEXT_ORDERING
             )
-        sql_explain = ""
-        sql_0 = sql[0]
-        if sql_0.startswith("EXPLAIN"):
-            sql_0 = sql_0.split(' ', 1)[1]
-            sql_explain = "EXPLAIN"
-        return ("".join([sql_explain, CTE.format(**params), sql_0]), sql[1])
+        sql_0, sql_1 = super().as_sql(*args, **kwargs)
+        explain = ""
+        if sql_0.startswith("EXPLAIN "):
+            explain, sql_0 = sql_0.split(" ", 1)
+        return ("".join([explain, CTE.format(**params), sql_0]), sql_1)
 
     def get_converters(self, expressions):
         converters = super().get_converters(expressions)
