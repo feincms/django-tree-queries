@@ -4,7 +4,16 @@ Change log
 `Next version`_
 ~~~~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.12...main
+.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.13...main
+
+
+`0.13`_ (2022-12-08)
+~~~~~~~~~~~~~~~~~~~~
+
+.. _0.13: https://github.com/matthiask/django-tree-queries/compare/0.12...0.13
+
+- Made it possible to use tree queries with multiple table inheritance. Thanks
+  Olivier Dalang for the testcases and the initial implementation!
 
 
 `0.12`_ (2022-11-30)
