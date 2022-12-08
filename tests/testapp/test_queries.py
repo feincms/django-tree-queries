@@ -15,6 +15,7 @@ from .models import (
     MultiOrderedModel,
     ReferenceModel,
     StringOrderedModel,
+    TreeNodeIsOptional,
     UnorderedModel,
     UUIDModel,
 )
@@ -545,3 +546,10 @@ class Test(TestCase):
         if connections[Model.objects.db].vendor == "postgresql":
             explanation = Model.objects.with_tree_fields().explain()
             self.assertIn("CTE", explanation)
+
+    def test_tree_queries_without_tree_node(self):
+        TreeNodeIsOptional.objects.create(parent=TreeNodeIsOptional.objects.create())
+
+        nodes = list(TreeNodeIsOptional.objects.with_tree_fields())
+        self.assertEqual(nodes[0].tree_depth, 0)
+        self.assertEqual(nodes[1].tree_depth, 1)

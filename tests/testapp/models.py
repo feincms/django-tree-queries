@@ -85,3 +85,9 @@ class MultiOrderedModel(TreeNode):
 
     def __str__(self):
         return self.name
+
+
+class TreeNodeIsOptional(models.Model):
+    parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE)
+
+    objects = TreeQuerySet.as_manager()
