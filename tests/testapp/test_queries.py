@@ -11,6 +11,10 @@ from tree_queries.query import pk
 from .models import (
     AlwaysTreeQueryModel,
     AlwaysTreeQueryModelCategory,
+    InheritChildModel,
+    InheritConcreteGrandChildModel,
+    InheritGrandChildModel,
+    InheritParentModel,
     Model,
     MultiOrderedModel,
     ReferenceModel,
@@ -553,3 +557,57 @@ class Test(TestCase):
         nodes = list(TreeNodeIsOptional.objects.with_tree_fields())
         self.assertEqual(nodes[0].tree_depth, 0)
         self.assertEqual(nodes[1].tree_depth, 1)
+
+    def test_polymorphic_queries(self):
+        """test queries on concrete child classes in multi-table inheritance setup"""
+
+        # create a tree with a random mix of classes/subclasses
+        root = InheritChildModel.objects.create(name="root")
+        child1 = InheritGrandChildModel.objects.create(parent=root, name="child1")
+        child2 = InheritParentModel.objects.create(parent=root, name="child2")
+        InheritParentModel.objects.create(parent=child1, name="child1_1")
+        InheritChildModel.objects.create(parent=child2, name="child2_1")
+        InheritConcreteGrandChildModel.objects.create(parent=child2, name="child2_2")
+
+        # ensure we get the full tree if querying the super class
+        objs = InheritParentModel.objects.with_tree_fields()
+        self.assertCountEqual(
+            [(p.name, p.tree_path) for p in objs],
+            [
+                ("root", [1]),
+                ("child1", [1, 2]),
+                ("child1_1", [1, 2, 4]),
+                ("child2", [1, 3]),
+                ("child2_1", [1, 3, 5]),
+                ("child2_2", [1, 3, 6]),
+            ],
+        )
+
+        # ensure we still get the tree when querying only a subclass (including sub-subclasses)
+        objs = InheritChildModel.objects.with_tree_fields()
+        self.assertCountEqual(
+            [(p.name, p.tree_path) for p in objs],
+            [
+                ("root", [1]),
+                ("child1", [1, 2]),
+                ("child2_1", [1, 3, 5]),
+            ],
+        )
+
+        # ensure we still get the tree when querying only a subclass
+        objs = InheritGrandChildModel.objects.with_tree_fields()
+        self.assertCountEqual(
+            [(p.name, p.tree_path) for p in objs],
+            [
+                ("child1", [1, 2]),
+            ],
+        )
+
+        # ensure we don't get confused by an intermediate abstract subclass
+        objs = InheritConcreteGrandChildModel.objects.with_tree_fields()
+        self.assertCountEqual(
+            [(p.name, p.tree_path) for p in objs],
+            [
+                ("child2_2", [1, 3, 6]),
+            ],
+        )

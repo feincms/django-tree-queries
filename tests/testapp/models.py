@@ -91,3 +91,24 @@ class TreeNodeIsOptional(models.Model):
     parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE)
 
     objects = TreeQuerySet.as_manager()
+
+
+class InheritParentModel(TreeNode):
+    name = models.CharField(max_length=100)
+
+
+class InheritChildModel(InheritParentModel):
+    pass
+
+
+class InheritGrandChildModel(InheritChildModel):
+    pass
+
+
+class InheritAbstractChildModel(InheritParentModel):
+    class Meta:
+        abstract = True
+
+
+class InheritConcreteGrandChildModel(InheritAbstractChildModel):
+    pass
