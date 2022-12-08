@@ -6,6 +6,10 @@ from django.db.models.sql.query import Query
 SEPARATOR = "\x1f"
 
 
+def _find_tree_model(cls):
+    return cls._meta.get_field("parent").model
+
+
 class TreeQuery(Query):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -19,10 +23,11 @@ class TreeQuery(Query):
         # Only add the sibling_order attribute if the query doesn't already have one to preserve cloning behavior
         if not hasattr(self, "sibling_order"):
             # Add an attribute to control the ordering of siblings within trees
+            base_model = _find_tree_model(self.model)
             self.sibling_order = (
-                self.model._meta.ordering[0]
-                if self.model._meta.ordering
-                else self.model._meta.pk.attname
+                base_model._meta.ordering[0]
+                if base_model._meta.ordering
+                else base_model._meta.pk.attname
             )
 
     def get_compiler(self, using=None, connection=None, **kwargs):
@@ -207,7 +212,7 @@ class TreeCompiler(SQLCompiler):
             annotation.is_summary
             for alias, annotation in self.query.annotations.items()
         )
-        opts = self.query.model._meta
+        opts = _find_tree_model(self.query.model)._meta
 
         params = {
             "parent": "parent_id",  # XXX Hardcoded.
