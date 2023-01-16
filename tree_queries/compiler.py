@@ -1,3 +1,5 @@
+import warnings
+
 from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
@@ -11,24 +13,8 @@ def _find_tree_model(cls):
 
 
 class TreeQuery(Query):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._setup_query()
-
-    def _setup_query(self):
-        """
-        Run on initialization and at the end of chaining. Any attributes that
-        would normally be set in __init__() should go here instead.
-        """
-        # Only add the sibling_order attribute if the query doesn't already have one to preserve cloning behavior
-        if not hasattr(self, "sibling_order"):
-            # Add an attribute to control the ordering of siblings within trees
-            base_model = _find_tree_model(self.model)
-            self.sibling_order = (
-                base_model._meta.ordering[0]
-                if base_model._meta.ordering
-                else base_model._meta.pk.attname
-            )
+    # Set by TreeQuerySet.order_siblings_by
+    sibling_order = None
 
     def get_compiler(self, using=None, connection=None, **kwargs):
         # Copied from django/db/models/sql/query.py
@@ -41,6 +27,22 @@ class TreeQuery(Query):
 
         # **kwargs passes on elide_empty from Django 4.0 onwards
         return TreeCompiler(self, connection, using, **kwargs)
+
+    def get_sibling_order(self):
+        if self.sibling_order is not None:
+            return self.sibling_order
+        opts = _find_tree_model(self.model)._meta
+        if opts.ordering:
+            if len(opts.ordering) > 1:
+                warnings.warn(
+                    f"Model '{opts.app_label}.{opts.model_name}' is used"
+                    " with django-tree-queries and has more than one field in"
+                    " Meta.ordering. django-tree-queries only uses the first"
+                    " field in the list.",
+                    RuntimeWarning,
+                )
+            return opts.ordering[0]
+        return opts.pk.attname
 
 
 class TreeCompiler(SQLCompiler):
@@ -218,7 +220,7 @@ class TreeCompiler(SQLCompiler):
             "parent": "parent_id",  # XXX Hardcoded.
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
-            "order_by": self.query.sibling_order,
+            "order_by": self.query.get_sibling_order(),
             "sep": SEPARATOR,
         }
 

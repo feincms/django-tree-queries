@@ -51,7 +51,6 @@ class TreeQuerySet(models.QuerySet):
         """
         if tree_fields:
             self.query.__class__ = TreeQuery
-            self.query._setup_query()
         else:
             self.query.__class__ = Query
         return self
@@ -64,7 +63,6 @@ class TreeQuerySet(models.QuerySet):
         to order tree siblings by that model field
         """
         self.query.__class__ = TreeQuery
-        self.query._setup_query()
         self.query.sibling_order = order_by
         return self
 

@@ -6,6 +6,9 @@ Change log
 
 .. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.13...main
 
+- Changed the behavior around sibling ordering to warn if using
+  ``Meta.ordering`` where ordering contains more than one field.
+
 
 `0.13`_ (2022-12-08)
 ~~~~~~~~~~~~~~~~~~~~
