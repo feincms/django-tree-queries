@@ -8,6 +8,7 @@ Change log
 
 - Changed the behavior around sibling ordering to warn if using
   ``Meta.ordering`` where ordering contains more than one field.
+- Added Django 4.2a1 to the CI.
 
 
 `0.13`_ (2022-12-08)
