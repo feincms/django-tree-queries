@@ -9,6 +9,11 @@ Change log
 - Changed the behavior around sibling ordering to warn if using
   ``Meta.ordering`` where ordering contains more than one field.
 - Added Django 4.2a1 to the CI.
+- Django 5.0 will require Python 3.10 or better, pruned the CI jobs list.
+- Added quoting to the field name for the ordering between siblings so that
+  fields named ``order`` can be used. Thanks Tao Bojlén!
+- Narrowed exception catching when determining whether the ordering field is an
+  integer field or not. Thanks Tao Bojlén.
 
 
 `0.13`_ (2022-12-08)
