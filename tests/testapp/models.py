@@ -8,11 +8,11 @@ from tree_queries.query import TreeQuerySet
 
 class Model(TreeNode):
     custom_id = models.AutoField(primary_key=True)
-    position = models.PositiveIntegerField(default=0)
+    order = models.PositiveIntegerField(default=0)
     name = models.CharField(max_length=100)
 
     class Meta:
-        ordering = ("position",)
+        ordering = ("order",)
 
     def __str__(self):
         return self.name

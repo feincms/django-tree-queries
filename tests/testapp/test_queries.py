@@ -30,11 +30,11 @@ class Test(TestCase):
     def create_tree(self):
         tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
         tree.root = Model.objects.create(name="root")
-        tree.child1 = Model.objects.create(parent=tree.root, position=0, name="1")
-        tree.child2 = Model.objects.create(parent=tree.root, position=1, name="2")
-        tree.child1_1 = Model.objects.create(parent=tree.child1, position=0, name="1-1")
-        tree.child2_1 = Model.objects.create(parent=tree.child2, position=0, name="2-1")
-        tree.child2_2 = Model.objects.create(parent=tree.child2, position=1, name="2-2")
+        tree.child1 = Model.objects.create(parent=tree.root, order=0, name="1")
+        tree.child2 = Model.objects.create(parent=tree.root, order=1, name="2")
+        tree.child1_1 = Model.objects.create(parent=tree.child1, order=0, name="1-1")
+        tree.child2_1 = Model.objects.create(parent=tree.child2, order=0, name="2-1")
+        tree.child2_2 = Model.objects.create(parent=tree.child2, order=1, name="2-2")
         return tree
 
     def test_stuff(self):
@@ -141,10 +141,10 @@ class Test(TestCase):
 
     def test_update_aggregate(self):
         self.create_tree()
-        Model.objects.with_tree_fields().update(position=3)
+        Model.objects.with_tree_fields().update(order=3)
         self.assertEqual(
-            Model.objects.with_tree_fields().aggregate(Sum("position")),
-            {"position__sum": 18},
+            Model.objects.with_tree_fields().aggregate(Sum("order")),
+            {"order__sum": 18},
             # TODO Sum("tree_depth") does not work because the field is not
             # known yet.
         )
@@ -267,11 +267,11 @@ class Test(TestCase):
         )
 
     def test_many_ordering(self):
-        root = Model.objects.create(position=1, name="root")
+        root = Model.objects.create(order=1, name="root")
         for i in range(20, 0, -1):
-            Model.objects.create(parent=root, name=f"Node {i}", position=i * 10)
+            Model.objects.create(parent=root, name=f"Node {i}", order=i * 10)
 
-        positions = [m.position for m in Model.objects.with_tree_fields()]
+        positions = [m.order for m in Model.objects.with_tree_fields()]
         self.assertEqual(positions, list(sorted(positions)))
 
     def test_bfs_ordering(self):

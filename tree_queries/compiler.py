@@ -4,7 +4,6 @@ from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
-
 SEPARATOR = "\x1f"
 
 
@@ -279,6 +278,8 @@ class TreeCompiler(SQLCompiler):
                 if _ordered_by_integer(opts, params)
                 else self.CTE_MYSQL_WITH_TEXT_ORDERING
             )
+        if params["order_by"]:
+            params["order_by"] = self.connection.ops.quote_name(params["order_by"])
         sql_0, sql_1 = super().as_sql(*args, **kwargs)
         explain = ""
         if sql_0.startswith("EXPLAIN "):
