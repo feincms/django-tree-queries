@@ -1,5 +1,6 @@
 import warnings
 
+from django.core.exceptions import FieldDoesNotExist
 from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
@@ -316,5 +317,5 @@ def _ordered_by_integer(opts, params):
     try:
         ordering_field = opts.get_field(params["order_by"])
         return isinstance(ordering_field, models.IntegerField)
-    except Exception:
+    except FieldDoesNotExist:
         return False
