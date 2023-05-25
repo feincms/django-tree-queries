@@ -9,6 +9,9 @@ Change log
 - Switched to ruff and hatchling.
 - Dropped Django 4.0.
 - Added Python 3.11.
+- Added a ``.without_tree_fields()`` method which calls
+  ``.with_tree_fields(False)`` in a way which doesn't trigger the flake8
+  boolean trap linter.
 
 
 `0.14`_ (2023-01-30)
