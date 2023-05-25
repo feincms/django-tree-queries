@@ -1,51 +1,46 @@
-exclude: ".yarn/|yarn.lock"
+exclude: ".yarn/|yarn.lock|\\.min\\.(css|js)$"
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
       - id: check-added-large-files
+      - id: check-builtin-literals
+      - id: check-executables-have-shebangs
       - id: check-merge-conflict
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
       - id: end-of-file-fixer
+      - id: mixed-line-ending
       - id: trailing-whitespace
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.3.1
-    hooks:
-      - id: pyupgrade
-        args: [--py38-plus]
   - repo: https://github.com/adamchainz/django-upgrade
-    rev: 1.12.0
+    rev: 1.13.0
     hooks:
       - id: django-upgrade
         args: [--target-version, "3.2"]
-  - repo: https://github.com/pycqa/isort
-    rev: 5.11.4
+  - repo: https://github.com/MarcoGorelli/absolufy-imports
+    rev: v0.3.1
     hooks:
-      - id: isort
-        args: [--profile=black, --lines-after-imports=2, --combine-as]
+      - id: absolufy-imports
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.0.270"
+    hooks:
+      - id: ruff
   - repo: https://github.com/psf/black
-    rev: 22.12.0
+    rev: 23.3.0
     hooks:
       - id: black
-  - repo: https://github.com/pycqa/flake8
-    rev: 6.0.0
-    hooks:
-      - id: flake8
-        args: ["--ignore=E203,E501,W503"]
-        additional_dependencies:
-          - flake8-bugbear
   - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v3.0.0-alpha.4
+    rev: v3.0.0-alpha.9-for-vscode
     hooks:
       - id: prettier
-        args: [--list-different, --no-semi, "--trailing-comma=es5"]
+        args: [--list-different, --no-semi]
         exclude: "^conf/|.*\\.html$"
-  - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v8.32.0
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: 0.11.2
     hooks:
-      - id: eslint
-        additional_dependencies:
-          - eslint@^8.32.0
-          - eslint-config-prettier
-          - "@babel/core"
-          - "@babel/eslint-parser"
-          - "@babel/preset-env"
+      - id: pyproject-fmt
+  - repo: https://github.com/abravalheri/validate-pyproject
+    rev: v0.13
+    hooks:
+      - id: validate-pyproject

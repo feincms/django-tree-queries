@@ -1,0 +1,108 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+  "hatchling",
+]
+
+[project]
+name = "django-tree-queries"
+description = "Tree queries with explicit opt-in, without configurability"
+readme = "README.rst"
+license = {text = "BSD-3-Clause"}
+authors = [
+    { name = "Matthias Kestenholz", email = "mk@feinheit.ch" },
+]
+requires-python = ">=3.6"
+classifiers = [
+  "Environment :: Web Environment",
+  "Framework :: Django",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.6",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+  "Topic :: Software Development",
+]
+dynamic = [
+  "version",
+]
+[project.optional-dependencies]
+tests = [
+  "coverage",
+]
+[project.urls]
+Homepage = "https://github.com/matthiask/django-tree-queries/"
+
+[tool.hatch.version]
+path = "tree_queries/__init__.py"
+
+[tool.ruff]
+extend-select = [
+  # pyflakes, pycodestyle
+  "F", "E", "W",
+  # mmcabe
+  "C90",
+  # isort
+  "I",
+  # pep8-naming
+  "N",
+  # pyupgrade
+  "UP",
+  # flake8-2020
+  "YTT",
+  # flake8-boolean-trap
+  "FBT",
+  # flake8-bugbear
+  "B",
+  # flake8-builtins
+  "A",
+  # flake8-comprehensions
+  "C4",
+  # flake8-django
+  "DJ",
+  # flake8-logging-format
+  "G",
+  # flake8-pie
+  "PIE",
+  # flake8-simplify
+  "SIM",
+  # flake8-gettext
+  "INT",
+  # pygrep-hooks
+  "PGH",
+  # pylint
+  "PL",
+  # unused noqa
+  "RUF100",
+]
+extend-ignore = [
+  # Allow zip() without strict=
+  "B905",
+  # No line length errors
+  "E501",
+]
+fix = true
+show-fixes = true
+target-version = "py38"
+
+[tool.ruff.isort]
+combine-as-imports = true
+lines-after-imports = 2
+
+[tool.ruff.mccabe]
+max-complexity = 15
+
+[tool.ruff.per-file-ignores]
+"*/migrat*/*" = [
+  # Allow using PascalCase model names in migrations
+  "N806",
+  # Ignore the fact that migration files are invalid module names
+  "N999",
+]

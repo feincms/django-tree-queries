@@ -18,7 +18,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 
 if os.environ.get("DB_BACKEND") in {"mysql", "mariadb"}:
     DATABASES["default"]["OPTIONS"] = {
-        "init_command": "SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"  # noqa
+        "init_command": "SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));"
     }
 
 INSTALLED_APPS = [

@@ -1,6 +1,6 @@
 from django.db import models
 
-from .forms import TreeNodeChoiceField
+from tree_queries.forms import TreeNodeChoiceField
 
 
 class TreeNodeForeignKey(models.ForeignKey):

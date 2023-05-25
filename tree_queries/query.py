@@ -1,5 +1,3 @@
-from functools import wraps
-
 from django.db import connections, models
 from django.db.models.sql.query import Query
 
@@ -14,28 +12,6 @@ def pk(of):
     return of.pk if hasattr(of, "pk") else of
 
 
-def positional(count):
-    """
-    Only allows ``count`` positional arguments to the decorated callable
-
-    Will be removed as soon as we drop support for Python 2.
-    """
-
-    def _dec(fn):
-        @wraps(fn)
-        def _fn(*args, **kwargs):
-            if len(args) > count:
-                raise TypeError(
-                    "Only %s positional argument%s allowed"
-                    % (count, "" if count == 1 else "s")
-                )
-            return fn(*args, **kwargs)
-
-        return _fn
-
-    return _dec
-
-
 class TreeManager(models.Manager):
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -43,7 +19,7 @@ class TreeManager(models.Manager):
 
 
 class TreeQuerySet(models.QuerySet):
-    def with_tree_fields(self, tree_fields=True):
+    def with_tree_fields(self, tree_fields=True):  # noqa: FBT002
         """
         Requests tree fields on this queryset
 
@@ -54,6 +30,12 @@ class TreeQuerySet(models.QuerySet):
         else:
             self.query.__class__ = Query
         return self
+
+    def without_tree_fields(self):
+        """
+        Requests no tree fields on this queryset
+        """
+        return self.with_tree_fields(tree_fields=False)
 
     def order_siblings_by(self, order_by):
         """
@@ -66,23 +48,21 @@ class TreeQuerySet(models.QuerySet):
         self.query.sibling_order = order_by
         return self
 
-    @positional(1)
-    def as_manager(cls, with_tree_fields=False):
-        Manager = TreeManager.from_queryset(cls)
+    def as_manager(cls, *, with_tree_fields=False):  # noqa: N805
+        manager_class = TreeManager.from_queryset(cls)
         # Only used in deconstruct:
-        Manager._built_with_as_manager = True
+        manager_class._built_with_as_manager = True
         # Set attribute on class, not on the instance so that the automatic
         # subclass generation used e.g. for relations also finds this
         # attribute.
-        Manager._with_tree_fields = with_tree_fields
-        return Manager()
+        manager_class._with_tree_fields = with_tree_fields
+        return manager_class()
 
     as_manager.queryset_only = True
     as_manager = classmethod(as_manager)
 
-    @positional(2)
-    def ancestors(self, of, include_self=False):
-        """ancestors(self, of, *, include_self=False)
+    def ancestors(self, of, *, include_self=False):
+        """
         Returns ancestors of the given node ordered from the root of the tree
         towards deeper levels, optionally including the node itself
         """
@@ -96,9 +76,8 @@ class TreeQuerySet(models.QuerySet):
             .extra(order_by=["__tree.tree_depth"])
         )
 
-    @positional(2)
-    def descendants(self, of, include_self=False):
-        """descendants(self, of, *, include_self=False)
+    def descendants(self, of, *, include_self=False):
+        """
         Returns descendants of the given node in depth-first order, optionally
         including and starting with the node itself
         """

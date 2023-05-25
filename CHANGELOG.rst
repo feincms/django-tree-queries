@@ -6,6 +6,10 @@ Change log
 
 .. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.14...main
 
+- Switched to ruff and hatchling.
+- Dropped Django 4.0.
+- Added Python 3.11.
+
 
 `0.14`_ (2023-01-30)
 ~~~~~~~~~~~~~~~~~~~~

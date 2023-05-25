@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(".."))
 
 project = "django-tree-queries"
 author = "Feinheit AG"
-copyright = f"2018-{date.today().year}, {author}"
+copyright = f"2018-{date.today().year}, {author}"  # noqa: A001
 version = __import__("tree_queries").__version__
 release = subprocess.check_output(
     "git fetch --tags; git describe", shell=True, text=True

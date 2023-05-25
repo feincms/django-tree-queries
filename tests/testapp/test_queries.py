@@ -5,10 +5,7 @@ from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
 from django.test import TestCase, override_settings
 
-from tree_queries.compiler import SEPARATOR, TreeQuery
-from tree_queries.query import pk
-
-from .models import (
+from testapp.models import (
     AlwaysTreeQueryModel,
     AlwaysTreeQueryModelCategory,
     InheritChildModel,
@@ -23,6 +20,8 @@ from .models import (
     UnorderedModel,
     UUIDModel,
 )
+from tree_queries.compiler import SEPARATOR, TreeQuery
+from tree_queries.query import pk
 
 
 @override_settings(DEBUG=True)
@@ -176,9 +175,7 @@ class Test(TestCase):
     def test_revert(self):
         tree = self.create_tree()
         obj = (
-            Model.objects.with_tree_fields()
-            .with_tree_fields(False)
-            .get(pk=tree.root.pk)
+            Model.objects.with_tree_fields().without_tree_fields().get(pk=tree.root.pk)
         )
         self.assertFalse(hasattr(obj, "tree_depth"))
 
@@ -272,7 +269,7 @@ class Test(TestCase):
             Model.objects.create(parent=root, name=f"Node {i}", order=i * 10)
 
         positions = [m.order for m in Model.objects.with_tree_fields()]
-        self.assertEqual(positions, list(sorted(positions)))
+        self.assertEqual(positions, sorted(positions))
 
     def test_bfs_ordering(self):
         tree = self.create_tree()

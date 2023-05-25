@@ -5,6 +5,7 @@ from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
+
 SEPARATOR = "\x1f"
 
 
@@ -40,6 +41,7 @@ class TreeQuery(Query):
                     " Meta.ordering. django-tree-queries only uses the first"
                     " field in the list.",
                     RuntimeWarning,
+                    stacklevel=1,
                 )
             return opts.ordering[0]
         return opts.pk.attname
@@ -262,19 +264,19 @@ class TreeCompiler(SQLCompiler):
             )
 
         if self.connection.vendor == "postgresql":
-            CTE = (
+            cte = (
                 self.CTE_POSTGRESQL_WITH_INTEGER_ORDERING
                 if _ordered_by_integer(opts, params)
                 else self.CTE_POSTGRESQL_WITH_TEXT_ORDERING
             )
         elif self.connection.vendor == "sqlite":
-            CTE = (
+            cte = (
                 self.CTE_SQLITE3_WITH_INTEGER_ORDERING
                 if _ordered_by_integer(opts, params)
                 else self.CTE_SQLITE3_WITH_TEXT_ORDERING
             )
         elif self.connection.vendor == "mysql":
-            CTE = (
+            cte = (
                 self.CTE_MYSQL_WITH_INTEGER_ORDERING
                 if _ordered_by_integer(opts, params)
                 else self.CTE_MYSQL_WITH_TEXT_ORDERING
@@ -285,7 +287,7 @@ class TreeCompiler(SQLCompiler):
         explain = ""
         if sql_0.startswith("EXPLAIN "):
             explain, sql_0 = sql_0.split(" ", 1)
-        return ("".join([explain, CTE.format(**params), sql_0]), sql_1)
+        return ("".join([explain, cte.format(**params), sql_0]), sql_1)
 
     def get_converters(self, expressions):
         converters = super().get_converters(expressions)

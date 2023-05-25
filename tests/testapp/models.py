@@ -34,7 +34,8 @@ class StringOrderedModel(TreeNode):
 
 
 class AlwaysTreeQueryModelCategory(models.Model):
-    pass
+    def __str__(self):
+        return ""
 
 
 class ReferenceModel(models.Model):
@@ -48,6 +49,9 @@ class ReferenceModel(models.Model):
 
     class Meta:
         ordering = ("position",)
+
+    def __str__(self):
+        return ""
 
 
 class AlwaysTreeQueryModel(TreeNode):
@@ -66,9 +70,12 @@ class AlwaysTreeQueryModel(TreeNode):
     class Meta:
         base_manager_name = "objects"
 
+    def __str__(self):
+        return self.name
+
 
 class UUIDModel(TreeNode):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)  # noqa: A003
     name = models.CharField(max_length=100)
 
     def __str__(self):
@@ -91,6 +98,9 @@ class TreeNodeIsOptional(models.Model):
     parent = models.ForeignKey("self", null=True, on_delete=models.CASCADE)
 
     objects = TreeQuerySet.as_manager()
+
+    def __str__(self):
+        return ""
 
 
 class InheritParentModel(TreeNode):
