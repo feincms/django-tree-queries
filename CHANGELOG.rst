@@ -1,10 +1,12 @@
 Change log
 ==========
 
-`Next version`_
-~~~~~~~~~~~~~~~
+Next version
+~~~~~~~~~~~~
 
-.. _Next version: https://github.com/matthiask/django-tree-queries/compare/0.14...main
+
+0.15 (2023-06-19)
+~~~~~~~~~~~~~~~~~
 
 - Switched to ruff and hatchling.
 - Dropped Django 4.0.
