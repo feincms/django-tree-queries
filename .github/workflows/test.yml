@@ -15,9 +15,9 @@ jobs:
       mariadb:
         image: mariadb
         env:
-          MYSQL_ROOT_PASSWORD: tree_queries
+          MARIADB_ROOT_PASSWORD: tree_queries
         options: >-
-          --health-cmd "mysqladmin ping"
+          --health-cmd "mariadb-admin ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
