@@ -40,6 +40,9 @@ tests = [
 [project.urls]
 Homepage = "https://github.com/matthiask/django-tree-queries/"
 
+[tool.hatch.build]
+include = ["tree_queries/"]
+
 [tool.hatch.version]
 path = "tree_queries/__init__.py"
 
