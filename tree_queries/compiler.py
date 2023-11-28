@@ -215,7 +215,7 @@ class TreeCompiler(SQLCompiler):
             # OK if generator is not consumed completely
             annotation.is_summary
             for alias, annotation in self.query.annotations.items()
-        )
+        ) or self.query.values_select
         opts = _find_tree_model(self.query.model)._meta
 
         params = {
