@@ -4,7 +4,13 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.16 (2023-11-29)
+~~~~~~~~~~~~~~~~~
+
 - Added Python 3.12, Django 5.0.
+- Fixed a problem where ``.values()`` would return an incorrect mapping. Thanks
+  Glenn Matthews!
+- Started running tests periodically to catch bugs earlier.
 
 
 0.15 (2023-06-19)
