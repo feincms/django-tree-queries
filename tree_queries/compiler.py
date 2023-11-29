@@ -210,12 +210,14 @@ class TreeCompiler(SQLCompiler):
         # I am not confident that this is the perfect way to approach this
         # problem but I just gotta stop worrying and trust the testsuite.
         skip_tree_fields = (
-            self.query.distinct and self.query.subquery
-        ) or any(  # pragma: no branch
-            # OK if generator is not consumed completely
-            annotation.is_summary
-            for alias, annotation in self.query.annotations.items()
-        ) or self.query.values_select
+            (self.query.distinct and self.query.subquery)
+            or self.query.values_select
+            or any(  # pragma: no branch
+                # OK if generator is not consumed completely
+                annotation.is_summary
+                for alias, annotation in self.query.annotations.items()
+            )
+        )
         opts = _find_tree_model(self.query.model)._meta
 
         params = {

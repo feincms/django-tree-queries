@@ -153,8 +153,18 @@ class Test(TestCase):
         self.assertEqual(
             list(Model.objects.ancestors(tree.child2_1).values()),
             [
-                {'custom_id': 1, 'name': 'root', 'order': 0, 'parent_id': None},
-                {'custom_id': 3, 'name': '2', 'order': 1, 'parent_id': 1},
+                {
+                    "custom_id": tree.root.pk,
+                    "name": "root",
+                    "order": 0,
+                    "parent_id": None,
+                },
+                {
+                    "custom_id": tree.child2.pk,
+                    "name": "2",
+                    "order": 1,
+                    "parent_id": tree.root.pk,
+                },
             ],
         )
 
