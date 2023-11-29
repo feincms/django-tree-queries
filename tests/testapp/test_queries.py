@@ -151,6 +151,26 @@ class Test(TestCase):
     def test_values(self):
         tree = self.create_tree()
         self.assertEqual(
+            list(Model.objects.ancestors(tree.child2_1).values()),
+            [
+                {
+                    "custom_id": tree.root.pk,
+                    "name": "root",
+                    "order": 0,
+                    "parent_id": None,
+                },
+                {
+                    "custom_id": tree.child2.pk,
+                    "name": "2",
+                    "order": 1,
+                    "parent_id": tree.root.pk,
+                },
+            ],
+        )
+
+    def test_values_list(self):
+        tree = self.create_tree()
+        self.assertEqual(
             list(
                 Model.objects.ancestors(tree.child2_1).values_list("parent", flat=True)
             ),
