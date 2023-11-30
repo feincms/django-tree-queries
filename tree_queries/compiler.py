@@ -211,7 +211,6 @@ class TreeCompiler(SQLCompiler):
         # problem but I just gotta stop worrying and trust the testsuite.
         skip_tree_fields = (
             (self.query.distinct and self.query.subquery)
-            or self.query.values_select
             or any(  # pragma: no branch
                 # OK if generator is not consumed completely
                 annotation.is_summary
@@ -244,9 +243,9 @@ class TreeCompiler(SQLCompiler):
 
             self.query.add_extra(
                 # Do not add extra fields to the select statement when it is a
-                # summary query
+                # summary query or when using .values() or .values_list()
                 select={}
-                if skip_tree_fields
+                if skip_tree_fields or self.query.values_select
                 else {
                     "tree_depth": "__tree.tree_depth",
                     "tree_path": "__tree.tree_path",

@@ -151,6 +151,20 @@ class Test(TestCase):
     def test_values(self):
         tree = self.create_tree()
         self.assertEqual(
+            list(Model.objects.with_tree_fields().values("name")),
+            [
+                {"name": "root"},
+                {"name": "1"},
+                {"name": "1-1"},
+                {"name": "2"},
+                {"name": "2-1"},
+                {"name": "2-2"},
+            ],
+        )
+
+    def test_values_ancestors(self):
+        tree = self.create_tree()
+        self.assertEqual(
             list(Model.objects.ancestors(tree.child2_1).values()),
             [
                 {
@@ -169,6 +183,13 @@ class Test(TestCase):
         )
 
     def test_values_list(self):
+        tree = self.create_tree()
+        self.assertEqual(
+            list(Model.objects.with_tree_fields().values_list("name", flat=True)),
+            ["root", "1", "1-1", "2", "2-1", "2-2"],
+        )
+
+    def test_values_list_ancestors(self):
         tree = self.create_tree()
         self.assertEqual(
             list(
