@@ -4,6 +4,10 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Preserved the tree ordering even when using ``.values()`` or
+  ``.values_list()``. Thanks Glenn Matthews!
+
+
 0.16 (2023-11-29)
 ~~~~~~~~~~~~~~~~~
 
