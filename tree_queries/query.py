@@ -37,7 +37,7 @@ class TreeQuerySet(models.QuerySet):
         """
         return self.with_tree_fields(tree_fields=False)
 
-    def order_siblings_by(self, order_by):
+    def order_siblings_by(self, *order_by):
         """
         Sets TreeQuery sibling_order attribute
 
