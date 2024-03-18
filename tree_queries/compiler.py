@@ -194,12 +194,12 @@ class TreeCompiler(SQLCompiler):
         opts = self.query.model._meta
         sibling_order = self.query.get_sibling_order()
 
-        if isinstance(sibling_order, list):
+        if isinstance(sibling_order, (list, tuple)):
             order_fields = sibling_order
         elif isinstance(sibling_order, str):
             order_fields = [sibling_order]
         else:
-            raise ValueError("Sibling order must be a string or list of strings.")
+            raise ValueError("Sibling order must be a string or a list or tuple of strings.")
         
         order_by_objs = []
         for field in order_fields:
