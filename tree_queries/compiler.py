@@ -194,16 +194,17 @@ class TreeCompiler(SQLCompiler):
         opts = self.query.model._meta
         sibling_order = self.query.get_sibling_order()
 
-        order_by_objs = []
-        if isinstance(sibling_order, str):
-            for order_obj, is_ref in self.find_ordering_name(sibling_order, opts, alias='t'):
-                order_by_objs.append(order_obj)
-        elif isinstance(sibling_order, list):
-            for field in self.query.sibling_order:
-                for order_obj, is_ref in self.find_ordering_name(field, opts, alias='t'):
-                    order_by_objs.append(order_obj)
+        if isinstance(sibling_order, list):
+            order_fields = sibling_order
+        elif isinstance(sibling_order, str):
+            order_fields = [sibling_order]
         else:
             raise ValueError("Sibling order must be a string or list of strings.")
+        
+        order_by_objs = []
+        for field in order_fields:
+            for order_obj, is_ref in self.find_ordering_name(field, opts, alias='t'):
+                order_by_objs.append(order_obj)
 
         row_window = Window(expression=RowNumber(), order_by=order_by_objs)
         order_sql, order_params = self.compile(row_window)
