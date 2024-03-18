@@ -4,6 +4,8 @@ from django.core.exceptions import FieldDoesNotExist
 from django.db import connections, models
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
+from django.db.models.expressions import Window
+from django.db.models.functions.window import RowNumber
 
 
 SEPARATOR = "\x1f"
@@ -34,16 +36,7 @@ class TreeQuery(Query):
             return self.sibling_order
         opts = _find_tree_model(self.model)._meta
         if opts.ordering:
-            if len(opts.ordering) > 1:
-                warnings.warn(
-                    f"Model '{opts.app_label}.{opts.model_name}' is used"
-                    " with django-tree-queries and has more than one field in"
-                    " Meta.ordering. django-tree-queries only uses the first"
-                    " field in the list.",
-                    RuntimeWarning,
-                    stacklevel=1,
-                )
-            return opts.ordering[0]
+            return opts.ordering
         return opts.pk.attname
 
 
@@ -194,6 +187,29 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
+    def sibling_order_as_sql(self):
+        # Create a raw SQL ROW_NUMBER() window expression that can be used
+        # to convert any set of sibling ordering fields to ascending ordinal
+        # numbers. Alias is hardcoded to 't' to match CTE hardcoding.
+        opts = self.query.model._meta
+        sibling_order = self.query.get_sibling_order()
+
+        order_by_objs = []
+        if isinstance(sibling_order, str):
+            for order_obj, is_ref in self.find_ordering_name(sibling_order, opts, alias='t'):
+                order_by_objs.append(order_obj)
+        elif isinstance(sibling_order, list):
+            for field in self.query.sibling_order:
+                for order_obj, is_ref in self.find_ordering_name(field, opts, alias='t'):
+                    order_by_objs.append(order_obj)
+        else:
+            raise ValueError("Sibling order must be a string or list of strings.")
+
+        row_window = Window(expression=RowNumber(), order_by=order_by_objs)
+        order_sql, order_params = self.compile(row_window)
+
+        return order_sql
+
     def as_sql(self, *args, **kwargs):
         # The general idea is that if we have a summary query (e.g. .count())
         # then we do not want to ask Django to add the tree fields to the query
@@ -223,7 +239,7 @@ class TreeCompiler(SQLCompiler):
             "parent": "parent_id",  # XXX Hardcoded.
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
-            "order_by": self.query.get_sibling_order(),
+            "order_by": self.sibling_order_as_sql(),
             "sep": SEPARATOR,
         }
 
