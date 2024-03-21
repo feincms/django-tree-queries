@@ -41,8 +41,8 @@ class TreeQuerySet(models.QuerySet):
         """
         Sets TreeQuery sibling_order attribute
 
-        Pass the name of a single model field as a string
-        to order tree siblings by that model field
+        Pass the names of model fields as a list of strings
+        to order tree siblings by those model fields
         """
         self.query.__class__ = TreeQuery
         self.query.sibling_order = order_by
