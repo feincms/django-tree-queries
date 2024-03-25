@@ -1,7 +1,6 @@
 from django.db import connections
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
-from django.db.models.sql.constants import ORDER_DIR
 
 
 SEPARATOR = "\x1f"
@@ -44,10 +43,10 @@ class TreeCompiler(SQLCompiler):
         "rank_order"
     ) AS (
         SELECT
-            {pk},
-            {parent},
-            ROW_NUMBER() OVER (ORDER BY {order_by})
-        FROM {db_table}
+            {rank_pk},
+            {rank_parent},
+            ROW_NUMBER() OVER (ORDER BY {rank_order_by})
+        FROM {rank_from}
     ),
     __tree (
         "tree_depth",
@@ -78,10 +77,10 @@ class TreeCompiler(SQLCompiler):
     CTE_MYSQL_WITH_INTEGER_ORDERING = """
     WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
         SELECT
-            {pk},
-            {parent},
-            ROW_NUMBER() OVER (ORDER BY {order_by})
-        FROM {db_table}
+            {rank_pk},
+            {rank_parent},
+            ROW_NUMBER() OVER (ORDER BY {rank_order_by})
+        FROM {rank_from}
     ),
     __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
@@ -109,10 +108,10 @@ class TreeCompiler(SQLCompiler):
     CTE_SQLITE3_WITH_INTEGER_ORDERING = """
     WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
         SELECT
-            {pk},
-            {parent},
-            row_number() OVER (ORDER BY {order_by})
-        FROM {db_table}
+            {rank_pk},
+            {rank_parent},
+            row_number() OVER (ORDER BY {rank_order_by})
+        FROM {rank_from}
     ),
     __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
@@ -135,15 +134,14 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
-    def sibling_order_str(self):
-        # Create a string of fields that can be placed in a SQL
-        # ORDER BY statement
+    def get_sibling_order_params(self):
+        '''
+            This method uses a simple django queryset to generate sql
+            that can be used to create the __rank_table that orders
+            siblings. This is done so that any joins required by order_by
+            are pre-calculated by django
+        '''
         sibling_order = self.query.get_sibling_order()
-
-        if self.query.standard_ordering:
-            dirn = ORDER_DIR["ASC"]
-        else:
-            dirn = ORDER_DIR["DESC"]
 
         if isinstance(sibling_order, (list, tuple)):
             order_fields = sibling_order
@@ -151,26 +149,34 @@ class TreeCompiler(SQLCompiler):
             order_fields = [sibling_order]
         else:
             raise ValueError("Sibling order must be a string or a list or tuple of strings.")
+
+        # Use Django to make a SQL query whose parts can be repurposed for __rank_table
+        base_query = _find_tree_model(self.query.model).objects.only("pk", "parent").order_by(*order_fields).query
         
-        order_by_strs = []
-        for field in order_fields:
-            if field[0] == "-":
-                fld = field[1:]
-                direction = dirn[1]
+        # Use the base compiler because we want vanilla sql and want to avoid recursion.
+        base_compiler = SQLCompiler(base_query, self.connection, None)
+        base_sql, base_params = base_compiler.as_sql()
+        result_sql = base_sql % base_params
+
+        # Split the base SQL string on the SQL keywords 'FROM' and 'ORDER BY'
+        from_split = result_sql.split("FROM")
+        order_split = from_split[1].split("ORDER BY")
+
+        # Identify the FROM and ORDER BY parts of the base SQL
+        ordering_params = {
+            "rank_from": order_split[0].strip(),
+            "rank_order_by": order_split[1].strip(),
+        }
+
+        # Identify the primary key field and parent_id field from the SELECT section
+        base_select = from_split[0][6:]
+        for field in base_select.split(","):
+            if "parent_id" in field:  # XXX Taking advantage of Hardcoded.
+                ordering_params["rank_parent"] = field.strip()
             else:
-                fld = field
-                direction = dirn[0]
+                ordering_params["rank_pk"] = field.strip()
 
-            if fld == "pk":
-                opts = _find_tree_model(self.query.model)._meta
-                fld = opts.pk.name
-
-            fld = self.connection.ops.quote_name(fld)
-            order_by_strs.append(f'{fld} {direction}')
-
-        sibling_order_sql = "%s" % ", ".join(order_by_strs)
-
-        return sibling_order_sql
+        return ordering_params
 
     def as_sql(self, *args, **kwargs):
         # The general idea is that if we have a summary query (e.g. .count())
@@ -201,9 +207,11 @@ class TreeCompiler(SQLCompiler):
             "parent": "parent_id",  # XXX Hardcoded.
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
-            "order_by": self.sibling_order_str(),
             "sep": SEPARATOR,
         }
+
+        # Add ordering params to params
+        params.update(self.get_sibling_order_params())
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
