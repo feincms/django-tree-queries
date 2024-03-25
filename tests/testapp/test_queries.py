@@ -314,7 +314,6 @@ class Test(TestCase):
             Model.objects.create(parent=root, name=f"Node {i}", order=i * 10)
 
         positions = [m.order for m in Model.objects.with_tree_fields()]
-
         self.assertEqual(positions, sorted(positions))
 
     def test_bfs_ordering(self):
