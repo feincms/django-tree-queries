@@ -57,7 +57,8 @@ class Test(TestCase):
 
     def test_attributes(self):
         tree = self.create_tree()
-        child2_2 = Model.objects.with_tree_fields().get(pk=tree.child2_2.pk)
+        # Ordering should be deterministic
+        child2_2 = Model.objects.with_tree_fields().order_siblings_by("order", "pk").get(pk=tree.child2_2.pk)
         self.assertEqual(child2_2.tree_depth, 2)
         # Tree ordering is an array of the ranks assigned to a comment's
         # ancestors when they are ordered without respect for tree relations.
