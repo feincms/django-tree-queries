@@ -1,7 +1,4 @@
-import warnings
-
-from django.core.exceptions import FieldDoesNotExist
-from django.db import connections, models
+from django.db import connections
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
@@ -34,49 +31,24 @@ class TreeQuery(Query):
             return self.sibling_order
         opts = _find_tree_model(self.model)._meta
         if opts.ordering:
-            if len(opts.ordering) > 1:
-                warnings.warn(
-                    f"Model '{opts.app_label}.{opts.model_name}' is used"
-                    " with django-tree-queries and has more than one field in"
-                    " Meta.ordering. django-tree-queries only uses the first"
-                    " field in the list.",
-                    RuntimeWarning,
-                    stacklevel=1,
-                )
-            return opts.ordering[0]
+            return opts.ordering
         return opts.pk.attname
 
 
 class TreeCompiler(SQLCompiler):
-    CTE_POSTGRESQL_WITH_TEXT_ORDERING = """
-    WITH RECURSIVE __tree (
-        "tree_depth",
-        "tree_path",
-        "tree_ordering",
-        "tree_pk"
-    ) AS (
-        SELECT
-            0 AS tree_depth,
-            array[T.{pk}] AS tree_path,
-            array[{order_by}]::text[] AS tree_ordering,
-            T."{pk}"
-        FROM {db_table} T
-        WHERE T."{parent}" IS NULL
-
-        UNION ALL
-
-        SELECT
-            __tree.tree_depth + 1 AS tree_depth,
-            __tree.tree_path || T.{pk},
-            __tree.tree_ordering || {order_by}::text,
-            T."{pk}"
-        FROM {db_table} T
-        JOIN __tree ON T."{parent}" = __tree.tree_pk
-    )
-    """
-
     CTE_POSTGRESQL_WITH_INTEGER_ORDERING = """
-    WITH RECURSIVE __tree (
+    WITH RECURSIVE __rank_table(
+        "{pk}",
+        "{parent}",
+        "rank_order"
+    ) AS (
+        SELECT
+            {rank_pk},
+            {rank_parent},
+            ROW_NUMBER() OVER (ORDER BY {rank_order_by})
+        FROM {rank_from}
+    ),
+    __tree (
         "tree_depth",
         "tree_path",
         "tree_ordering",
@@ -85,9 +57,9 @@ class TreeCompiler(SQLCompiler):
         SELECT
             0 AS tree_depth,
             array[T.{pk}] AS tree_path,
-            array[{order_by}] AS tree_ordering,
+            array[T.rank_order] AS tree_ordering,
             T."{pk}"
-        FROM {db_table} T
+        FROM __rank_table T
         WHERE T."{parent}" IS NULL
 
         UNION ALL
@@ -95,23 +67,30 @@ class TreeCompiler(SQLCompiler):
         SELECT
             __tree.tree_depth + 1 AS tree_depth,
             __tree.tree_path || T.{pk},
-            __tree.tree_ordering || {order_by},
+            __tree.tree_ordering || T.rank_order,
             T."{pk}"
-        FROM {db_table} T
+        FROM __rank_table T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
     )
     """
 
     CTE_MYSQL_WITH_INTEGER_ORDERING = """
-    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+    WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
+        SELECT
+            {rank_pk},
+            {rank_parent},
+            ROW_NUMBER() OVER (ORDER BY {rank_order_by})
+        FROM {rank_from}
+    ),
+    __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0,
             -- Limit to max. 50 levels...
             CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
-            CAST(CONCAT("{sep}", LPAD(CONCAT({order_by}, "{sep}"), 20, "0"))
+            CAST(CONCAT("{sep}", LPAD(CONCAT(T.rank_order, "{sep}"), 20, "0"))
                 AS char(1000)),
             T.{pk}
-        FROM {db_table} T
+        FROM __rank_table T
         WHERE T.{parent} IS NULL
 
         UNION ALL
@@ -119,45 +98,28 @@ class TreeCompiler(SQLCompiler):
         SELECT
             __tree.tree_depth + 1,
             CONCAT(__tree.tree_path, T2.{pk}, "{sep}"),
-            CONCAT(__tree.tree_ordering, LPAD(CONCAT(T2.{order_by}, "{sep}"), 20, "0")),
+            CONCAT(__tree.tree_ordering, LPAD(CONCAT(T2.rank_order, "{sep}"), 20, "0")),
             T2.{pk}
-        FROM __tree, {db_table} T2
-        WHERE __tree.tree_pk = T2.{parent}
-    )
-    """
-
-    CTE_MYSQL_WITH_TEXT_ORDERING = """
-    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
-        SELECT
-            0,
-            -- Limit to max. 50 levels...
-            CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
-            CAST(CONCAT("{sep}", CONCAT({order_by}, "{sep}"))
-                AS char(1000)),
-            T.{pk}
-        FROM {db_table} T
-        WHERE T.{parent} IS NULL
-
-        UNION ALL
-
-        SELECT
-            __tree.tree_depth + 1,
-            CONCAT(__tree.tree_path, T2.{pk}, "{sep}"),
-            CONCAT(__tree.tree_ordering, CONCAT(T2.{order_by}, "{sep}")),
-            T2.{pk}
-        FROM __tree, {db_table} T2
+        FROM __tree, __rank_table T2
         WHERE __tree.tree_pk = T2.{parent}
     )
     """
 
     CTE_SQLITE3_WITH_INTEGER_ORDERING = """
-    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+    WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
+        SELECT
+            {rank_pk},
+            {rank_parent},
+            row_number() OVER (ORDER BY {rank_order_by})
+        FROM {rank_from}
+    ),
+    __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             0 tree_depth,
             printf("{sep}%%s{sep}", {pk}) tree_path,
-            printf("{sep}%%020s{sep}", {order_by}) tree_ordering,
+            printf("{sep}%%020s{sep}", T.rank_order) tree_ordering,
             T."{pk}" tree_pk
-        FROM {db_table} T
+        FROM __rank_table T
         WHERE T."{parent}" IS NULL
 
         UNION ALL
@@ -165,34 +127,56 @@ class TreeCompiler(SQLCompiler):
         SELECT
             __tree.tree_depth + 1,
             __tree.tree_path || printf("%%s{sep}", T.{pk}),
-            __tree.tree_ordering || printf("%%020s{sep}", T.{order_by}),
+            __tree.tree_ordering || printf("%%020s{sep}", T.rank_order),
             T."{pk}"
-        FROM {db_table} T
+        FROM __rank_table T
         JOIN __tree ON T."{parent}" = __tree.tree_pk
     )
     """
 
-    CTE_SQLITE3_WITH_TEXT_ORDERING = """
-    WITH RECURSIVE __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
-        SELECT
-            0 tree_depth,
-            printf("{sep}%%s{sep}", {pk}) tree_path,
-            printf("{sep}%%s{sep}", {order_by}) tree_ordering,
-            T."{pk}" tree_pk
-        FROM {db_table} T
-        WHERE T."{parent}" IS NULL
+    def get_sibling_order_params(self):
+        '''
+            This method uses a simple django queryset to generate sql
+            that can be used to create the __rank_table that orders
+            siblings. This is done so that any joins required by order_by
+            are pre-calculated by django
+        '''
+        sibling_order = self.query.get_sibling_order()
 
-        UNION ALL
+        if isinstance(sibling_order, (list, tuple)):
+            order_fields = sibling_order
+        elif isinstance(sibling_order, str):
+            order_fields = [sibling_order]
+        else:
+            raise ValueError("Sibling order must be a string or a list or tuple of strings.")
 
-        SELECT
-            __tree.tree_depth + 1,
-            __tree.tree_path || printf("%%s{sep}", T.{pk}),
-            __tree.tree_ordering || printf("%%s{sep}", T.{order_by}),
-            T."{pk}"
-        FROM {db_table} T
-        JOIN __tree ON T."{parent}" = __tree.tree_pk
-    )
-    """
+        # Use Django to make a SQL query whose parts can be repurposed for __rank_table
+        base_query = _find_tree_model(self.query.model).objects.only("pk", "parent").order_by(*order_fields).query
+        
+        # Use the base compiler because we want vanilla sql and want to avoid recursion.
+        base_compiler = SQLCompiler(base_query, self.connection, None)
+        base_sql, base_params = base_compiler.as_sql()
+        result_sql = base_sql % base_params
+
+        # Split the base SQL string on the SQL keywords 'FROM' and 'ORDER BY'
+        from_split = result_sql.split("FROM")
+        order_split = from_split[1].split("ORDER BY")
+
+        # Identify the FROM and ORDER BY parts of the base SQL
+        ordering_params = {
+            "rank_from": order_split[0].strip(),
+            "rank_order_by": order_split[1].strip(),
+        }
+
+        # Identify the primary key field and parent_id field from the SELECT section
+        base_select = from_split[0][6:]
+        for field in base_select.split(","):
+            if "parent_id" in field:  # XXX Taking advantage of Hardcoded.
+                ordering_params["rank_parent"] = field.strip()
+            else:
+                ordering_params["rank_pk"] = field.strip()
+
+        return ordering_params
 
     def as_sql(self, *args, **kwargs):
         # The general idea is that if we have a summary query (e.g. .count())
@@ -223,9 +207,11 @@ class TreeCompiler(SQLCompiler):
             "parent": "parent_id",  # XXX Hardcoded.
             "pk": opts.pk.attname,
             "db_table": opts.db_table,
-            "order_by": self.query.get_sibling_order(),
             "sep": SEPARATOR,
         }
+
+        # Add ordering params to params
+        params.update(self.get_sibling_order_params())
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
@@ -265,29 +251,16 @@ class TreeCompiler(SQLCompiler):
             )
 
         if self.connection.vendor == "postgresql":
-            cte = (
-                self.CTE_POSTGRESQL_WITH_INTEGER_ORDERING
-                if _ordered_by_integer(opts, params)
-                else self.CTE_POSTGRESQL_WITH_TEXT_ORDERING
-            )
+            cte = self.CTE_POSTGRESQL_WITH_INTEGER_ORDERING
         elif self.connection.vendor == "sqlite":
-            cte = (
-                self.CTE_SQLITE3_WITH_INTEGER_ORDERING
-                if _ordered_by_integer(opts, params)
-                else self.CTE_SQLITE3_WITH_TEXT_ORDERING
-            )
+            cte = self.CTE_SQLITE3_WITH_INTEGER_ORDERING  
         elif self.connection.vendor == "mysql":
-            cte = (
-                self.CTE_MYSQL_WITH_INTEGER_ORDERING
-                if _ordered_by_integer(opts, params)
-                else self.CTE_MYSQL_WITH_TEXT_ORDERING
-            )
-        if params["order_by"]:
-            params["order_by"] = self.connection.ops.quote_name(params["order_by"])
+            cte = self.CTE_MYSQL_WITH_INTEGER_ORDERING
         sql_0, sql_1 = super().as_sql(*args, **kwargs)
         explain = ""
         if sql_0.startswith("EXPLAIN "):
             explain, sql_0 = sql_0.split(" ", 1)
+
         return ("".join([explain, cte.format(**params), sql_0]), sql_1)
 
     def get_converters(self, expressions):
@@ -315,11 +288,3 @@ def converter(value, expression, connection, context=None):
         return [int(v) for v in value]  # Maybe Field.to_python()?
     except ValueError:
         return value
-
-
-def _ordered_by_integer(opts, params):
-    try:
-        ordering_field = opts.get_field(params["order_by"])
-        return isinstance(ordering_field, models.IntegerField)
-    except FieldDoesNotExist:
-        return False

@@ -122,3 +122,17 @@ class InheritAbstractChildModel(InheritParentModel):
 
 class InheritConcreteGrandChildModel(InheritAbstractChildModel):
     pass
+
+
+class RelatedOrderModel(TreeNode):
+    name = models.CharField(max_length=100)
+
+
+class OneToOneRelatedOrder(models.Model):
+    relatedmodel = models.OneToOneField(
+        RelatedOrderModel,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name="related",
+    )
+    order = models.PositiveIntegerField(default=0)

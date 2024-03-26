@@ -19,6 +19,8 @@ from testapp.models import (
     TreeNodeIsOptional,
     UnorderedModel,
     UUIDModel,
+    RelatedOrderModel,
+    OneToOneRelatedOrder,
 )
 from tree_queries.compiler import SEPARATOR, TreeQuery
 from tree_queries.query import pk
@@ -55,9 +57,12 @@ class Test(TestCase):
 
     def test_attributes(self):
         tree = self.create_tree()
-        child2_2 = Model.objects.with_tree_fields().get(pk=tree.child2_2.pk)
+        # Ordering should be deterministic
+        child2_2 = Model.objects.with_tree_fields().order_siblings_by("order", "pk").get(pk=tree.child2_2.pk)
         self.assertEqual(child2_2.tree_depth, 2)
-        self.assertEqual(child2_2.tree_ordering, [0, 1, 1])
+        # Tree ordering is an array of the ranks assigned to a comment's
+        # ancestors when they are ordered without respect for tree relations.
+        self.assertEqual(child2_2.tree_ordering, [1, 5, 6])
         self.assertEqual(
             child2_2.tree_path, [tree.root.pk, tree.child2.pk, tree.child2_2.pk]
         )
@@ -648,4 +653,91 @@ class Test(TestCase):
             [
                 ("child2_2", [1, 3, 6]),
             ],
+        )
+
+    def test_descending_order(self):
+        tree = self.create_tree()
+
+        nodes = Model.objects.order_siblings_by("-order")
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child2,
+                tree.child2_2,
+                tree.child2_1,
+                tree.child1,
+                tree.child1_1,
+            ],
+        )
+
+    def test_multi_field_order(self):
+        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+
+        tree.root = MultiOrderedModel.objects.create(name="root")
+        tree.child1 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=0, second_position=1, name="1"
+        )
+        tree.child2 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=0, second_position=0, name="2"
+        )
+        tree.child1_1 = MultiOrderedModel.objects.create(
+            parent=tree.child1, first_position=1, second_position=1, name="1-1"
+        )
+        tree.child2_1 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=0, second_position=1, name="2-1"
+        )
+        tree.child2_2 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=1, second_position=0, name="2-2"
+        )
+
+        nodes = MultiOrderedModel.objects.order_siblings_by("first_position", "-second_position")
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child1,
+                tree.child1_1,
+                tree.child2,
+                tree.child2_1,
+                tree.child2_2,
+            ]
+        )
+
+    def test_order_by_related(self):
+        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+
+        tree.root = RelatedOrderModel.objects.create(name="root")
+        tree.child1 = RelatedOrderModel.objects.create(parent=tree.root, name="1")
+        tree.child1_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child1, order=0
+        )
+        tree.child2 = RelatedOrderModel.objects.create(parent=tree.root, name="2")
+        tree.child2_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child2, order=1
+        )
+        tree.child1_1 = RelatedOrderModel.objects.create(parent=tree.child1, name="1-1")
+        tree.child1_1_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child1_1, order=0
+        )
+        tree.child2_1 = RelatedOrderModel.objects.create(parent=tree.child2, name="2-1")
+        tree.child2_1_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child2_1, order=0
+        )
+        tree.child2_2 = RelatedOrderModel.objects.create(parent=tree.child2, name="2-2")
+        tree.child2_2_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child2_2, order=1
+        )
+
+        nodes = RelatedOrderModel.objects.order_siblings_by("related__order")
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child1,
+                tree.child1_1,
+                tree.child2,
+                tree.child2_1,
+                tree.child2_2,
+            ]
         )
