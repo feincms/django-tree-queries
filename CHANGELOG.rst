@@ -4,8 +4,14 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+
+0.17 (2024-03-26)
+~~~~~~~~~~~~~~~~~
+
 - Preserved the tree ordering even when using ``.values()`` or
   ``.values_list()``. Thanks Glenn Matthews!
+- Added support for descending sibling ordering, multi-field sibling ordering,
+  and related field sibling ordering. Thanks rhomboss!
 
 
 0.16 (2023-11-29)

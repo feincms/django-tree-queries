@@ -11,7 +11,7 @@ table expressions. Supports PostgreSQL, sqlite3 (3.8.3 or higher) and
 MariaDB (10.2.2 or higher) and MySQL (8.0 or higher, if running without
 ``ONLY_FULL_GROUP_BY``).
 
-Supports Django 2.2 or better, Python 3.6 or better. See the GitHub actions
+Supports Django 3.2 or better, Python 3.8 or better. See the GitHub actions
 build for more details.
 
 Features and limitations
@@ -60,8 +60,7 @@ Usage
   order tree siblings by a specific model field. Note that Django's standard
   ``order_by()`` method isn't supported -- nodes are returned according to the
   `depth-first search algorithm
-  <https://en.wikipedia.org/wiki/Depth-first_search>`__. It's not possible to
-  order siblings by more than one field either.
+  <https://en.wikipedia.org/wiki/Depth-first_search>`__.
 - Create a manager using
   ``TreeQuerySet.as_manager(with_tree_fields=True)`` if you want to add
   tree fields to queries by default.
