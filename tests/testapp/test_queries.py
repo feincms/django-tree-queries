@@ -14,13 +14,13 @@ from testapp.models import (
     InheritParentModel,
     Model,
     MultiOrderedModel,
+    OneToOneRelatedOrder,
     ReferenceModel,
+    RelatedOrderModel,
     StringOrderedModel,
     TreeNodeIsOptional,
     UnorderedModel,
     UUIDModel,
-    RelatedOrderModel,
-    OneToOneRelatedOrder,
 )
 from tree_queries.compiler import SEPARATOR, TreeQuery
 from tree_queries.query import pk
@@ -58,7 +58,11 @@ class Test(TestCase):
     def test_attributes(self):
         tree = self.create_tree()
         # Ordering should be deterministic
-        child2_2 = Model.objects.with_tree_fields().order_siblings_by("order", "pk").get(pk=tree.child2_2.pk)
+        child2_2 = (
+            Model.objects.with_tree_fields()
+            .order_siblings_by("order", "pk")
+            .get(pk=tree.child2_2.pk)
+        )
         self.assertEqual(child2_2.tree_depth, 2)
         # Tree ordering is an array of the ranks assigned to a comment's
         # ancestors when they are ordered without respect for tree relations.
@@ -154,7 +158,7 @@ class Test(TestCase):
         )
 
     def test_values(self):
-        tree = self.create_tree()
+        self.create_tree()
         self.assertEqual(
             list(Model.objects.with_tree_fields().values("name")),
             [
@@ -188,7 +192,7 @@ class Test(TestCase):
         )
 
     def test_values_list(self):
-        tree = self.create_tree()
+        self.create_tree()
         self.assertEqual(
             list(Model.objects.with_tree_fields().values_list("name", flat=True)),
             ["root", "1", "1-1", "2", "2-1", "2-2"],
@@ -691,7 +695,9 @@ class Test(TestCase):
             parent=tree.child2, first_position=1, second_position=0, name="2-2"
         )
 
-        nodes = MultiOrderedModel.objects.order_siblings_by("first_position", "-second_position")
+        nodes = MultiOrderedModel.objects.order_siblings_by(
+            "first_position", "-second_position"
+        )
         self.assertEqual(
             list(nodes),
             [
@@ -701,7 +707,7 @@ class Test(TestCase):
                 tree.child2,
                 tree.child2_1,
                 tree.child2_2,
-            ]
+            ],
         )
 
     def test_order_by_related(self):
@@ -739,5 +745,5 @@ class Test(TestCase):
                 tree.child2,
                 tree.child2_1,
                 tree.child2_2,
-            ]
+            ],
         )

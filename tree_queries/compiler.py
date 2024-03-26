@@ -36,7 +36,7 @@ class TreeQuery(Query):
 
 
 class TreeCompiler(SQLCompiler):
-    CTE_POSTGRESQL_WITH_INTEGER_ORDERING = """
+    CTE_POSTGRESQL = """
     WITH RECURSIVE __rank_table(
         "{pk}",
         "{parent}",
@@ -74,7 +74,7 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
-    CTE_MYSQL_WITH_INTEGER_ORDERING = """
+    CTE_MYSQL = """
     WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
         SELECT
             {rank_pk},
@@ -105,7 +105,7 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
-    CTE_SQLITE3_WITH_INTEGER_ORDERING = """
+    CTE_SQLITE3 = """
     WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
         SELECT
             {rank_pk},
@@ -135,12 +135,12 @@ class TreeCompiler(SQLCompiler):
     """
 
     def get_sibling_order_params(self):
-        '''
-            This method uses a simple django queryset to generate sql
-            that can be used to create the __rank_table that orders
-            siblings. This is done so that any joins required by order_by
-            are pre-calculated by django
-        '''
+        """
+        This method uses a simple django queryset to generate sql
+        that can be used to create the __rank_table that orders
+        siblings. This is done so that any joins required by order_by
+        are pre-calculated by django
+        """
         sibling_order = self.query.get_sibling_order()
 
         if isinstance(sibling_order, (list, tuple)):
@@ -148,11 +148,18 @@ class TreeCompiler(SQLCompiler):
         elif isinstance(sibling_order, str):
             order_fields = [sibling_order]
         else:
-            raise ValueError("Sibling order must be a string or a list or tuple of strings.")
+            raise ValueError(
+                "Sibling order must be a string or a list or tuple of strings."
+            )
 
         # Use Django to make a SQL query whose parts can be repurposed for __rank_table
-        base_query = _find_tree_model(self.query.model).objects.only("pk", "parent").order_by(*order_fields).query
-        
+        base_query = (
+            _find_tree_model(self.query.model)
+            .objects.only("pk", "parent")
+            .order_by(*order_fields)
+            .query
+        )
+
         # Use the base compiler because we want vanilla sql and want to avoid recursion.
         base_compiler = SQLCompiler(base_query, self.connection, None)
         base_sql, base_params = base_compiler.as_sql()
@@ -194,12 +201,11 @@ class TreeCompiler(SQLCompiler):
         # I am not confident that this is the perfect way to approach this
         # problem but I just gotta stop worrying and trust the testsuite.
         skip_tree_fields = (
-            (self.query.distinct and self.query.subquery)
-            or any(  # pragma: no branch
-                # OK if generator is not consumed completely
-                annotation.is_summary
-                for alias, annotation in self.query.annotations.items()
-            )
+            self.query.distinct and self.query.subquery
+        ) or any(  # pragma: no branch
+            # OK if generator is not consumed completely
+            annotation.is_summary
+            for alias, annotation in self.query.annotations.items()
         )
         opts = _find_tree_model(self.query.model)._meta
 
@@ -251,11 +257,11 @@ class TreeCompiler(SQLCompiler):
             )
 
         if self.connection.vendor == "postgresql":
-            cte = self.CTE_POSTGRESQL_WITH_INTEGER_ORDERING
+            cte = self.CTE_POSTGRESQL
         elif self.connection.vendor == "sqlite":
-            cte = self.CTE_SQLITE3_WITH_INTEGER_ORDERING  
+            cte = self.CTE_SQLITE3
         elif self.connection.vendor == "mysql":
-            cte = self.CTE_MYSQL_WITH_INTEGER_ORDERING
+            cte = self.CTE_MYSQL
         sql_0, sql_1 = super().as_sql(*args, **kwargs)
         explain = ""
         if sql_0.startswith("EXPLAIN "):
