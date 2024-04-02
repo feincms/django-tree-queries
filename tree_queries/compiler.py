@@ -188,7 +188,7 @@ class TreeCompiler(SQLCompiler):
     def as_sql(self, *args, **kwargs):
         # Try detecting if we're used in a EXISTS() subquery; we do not need
         # the tree table in that case. See GitHub issue #63.
-        if self.query.subquery and self.query.annotation_select_mask == ["a"]:
+        if self.query.subquery and list(self.query.annotations) == ["a"]:
             return super().as_sql(*args, **kwargs)
 
         # The general idea is that if we have a summary query (e.g. .count())
