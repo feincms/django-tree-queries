@@ -477,6 +477,12 @@ class Test(TestCase):
             [references.child2_1, references.child2_2],
         )
 
+    def test_reference_isnull_issue63(self):
+        # https://github.com/feincms/django-tree-queries/issues/63
+        self.assertSequenceEqual(
+            Model.objects.with_tree_fields().exclude(referencemodel__isnull=False), []
+        )
+
     def test_annotate_tree(self):
         tree = self.create_tree()
         qs = Model.objects.with_tree_fields().filter(

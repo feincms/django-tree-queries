@@ -1,4 +1,5 @@
 from django.db import connections
+from django.db.models import Value
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
@@ -186,6 +187,18 @@ class TreeCompiler(SQLCompiler):
         return ordering_params
 
     def as_sql(self, *args, **kwargs):
+        # Try detecting if we're used in a EXISTS(1 as "a") subquery like
+        # Django's sql.Query.exists() generates. If we detect such a query
+        # we're skipping the tree generation since it's not necessary in the
+        # best case and references unused table aliases (leading to SQL errors)
+        # in the worst case. See GitHub issue #63.
+        if (
+            self.query.subquery
+            and (ann := self.query.annotations)
+            and ann == {"a": Value(1)}
+        ):
+            return super().as_sql(*args, **kwargs)
+
         # The general idea is that if we have a summary query (e.g. .count())
         # then we do not want to ask Django to add the tree fields to the query
         # using .query.add_extra. The way to determine whether we have a
