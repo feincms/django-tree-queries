@@ -1,3 +1,5 @@
+from unittest import expectedFailure
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import connections, models
@@ -475,6 +477,20 @@ class Test(TestCase):
                 )
             ),
             [references.child2_1, references.child2_2],
+        )
+
+    def test_reference_isnull(self):
+        self.assertSequenceEqual(
+            Model.objects.with_tree_fields().filter(referencemodel__isnull=True), []
+        )
+        self.assertSequenceEqual(
+            Model.objects.with_tree_fields().exclude(referencemodel__isnull=True), []
+        )
+
+    @expectedFailure
+    def test_reference_isnull_issue63(self):
+        self.assertSequenceEqual(
+            Model.objects.with_tree_fields().exclude(referencemodel__isnull=False), []
         )
 
     def test_annotate_tree(self):
