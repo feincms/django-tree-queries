@@ -186,6 +186,11 @@ class TreeCompiler(SQLCompiler):
         return ordering_params
 
     def as_sql(self, *args, **kwargs):
+        # Try detecting if we're used in a EXISTS() subquery; we do not need
+        # the tree table in that case. See GitHub issue #63.
+        if self.query.subquery and self.query.annotation_select_mask == ["a"]:
+            return super().as_sql(*args, **kwargs)
+
         # The general idea is that if we have a summary query (e.g. .count())
         # then we do not want to ask Django to add the tree fields to the query
         # using .query.add_extra. The way to determine whether we have a
