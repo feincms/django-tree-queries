@@ -5,6 +5,13 @@ Next version
 ~~~~~~~~~~~~
 
 
+0.18 (2024-04-03)
+~~~~~~~~~~~~~~~~~
+
+- Fixed broken SQL which was generated when using a tree query with
+  ``EXISTS()`` subqueries.
+
+
 0.17 (2024-03-26)
 ~~~~~~~~~~~~~~~~~
 
