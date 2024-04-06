@@ -27,7 +27,9 @@ Features and limitations
   ``tree_depth``, ``tree_path`` and ``tree_ordering``. The names cannot
   be changed. ``tree_depth`` is an integer, ``tree_path`` an array of
   primary keys and ``tree_ordering`` an array of values used for
-  ordering nodes within their siblings.
+  ordering nodes within their siblings. Note that the contents of the
+  ``tree_path`` and ``tree_ordering`` are subject to change. You shouldn't rely
+  on their contents.
 - Besides adding the fields mentioned above the package only adds queryset
   methods for ordering siblings and filtering ancestors and descendants. Other
   features may be useful, but will not be added to the package just because
