@@ -754,11 +754,11 @@ class Test(TestCase):
             ],
         )
 
-    def test_pre_exclude(self):
+    def test_tree_exclude(self):
         tree = self.create_tree()
-        # Pre-filter should remove children if
+        # Tree-filter should remove children if
         # the parent meets the filtering criteria
-        nodes = Model.objects.pre_exclude(name="2")
+        nodes = Model.objects.tree_exclude(name="2")
         self.assertEqual(
             list(nodes),
             [
@@ -768,11 +768,11 @@ class Test(TestCase):
             ],
         )
 
-    def test_pre_filter(self):
+    def test_tree_filter(self):
         tree = self.create_tree()
-        # Pre-filter should remove children if
+        # Tree-filter should remove children if
         # the parent does not meet the filtering criteria
-        nodes = Model.objects.pre_filter(name__in=["root","1-1","2","2-1","2-2"])
+        nodes = Model.objects.tree_filter(name__in=["root","1-1","2","2-1","2-2"])
         self.assertEqual(
             list(nodes),
             [
@@ -783,11 +783,11 @@ class Test(TestCase):
             ],
         )
 
-    def test_pre_filter_chaining(self):
+    def test_tree_filter_chaining(self):
         tree = self.create_tree()
-        # Pre-filter should remove children if
+        # Tree-filter should remove children if
         # the parent does not meet the filtering criteria
-        nodes = Model.objects.pre_exclude(name="2-2").pre_filter(name__in=["root","1-1","2","2-1","2-2"])
+        nodes = Model.objects.tree_exclude(name="2-2").tree_filter(name__in=["root","1-1","2","2-1","2-2"])
         self.assertEqual(
             list(nodes),
             [
@@ -797,7 +797,7 @@ class Test(TestCase):
             ],
         )
 
-    def test_pre_filter_related(self):
+    def test_tree_filter_related(self):
         tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
 
         tree.root = RelatedOrderModel.objects.create(name="root")
@@ -825,7 +825,7 @@ class Test(TestCase):
             relatedmodel=tree.child2_2, order=1
         )
 
-        nodes = RelatedOrderModel.objects.pre_filter(related__order=0)
+        nodes = RelatedOrderModel.objects.tree_filter(related__order=0)
         self.assertEqual(
             list(nodes),
             [
@@ -835,7 +835,7 @@ class Test(TestCase):
             ],
         )
 
-    def test_pre_filter_with_order(self):
+    def test_tree_filter_with_order(self):
         tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
 
         tree.root = MultiOrderedModel.objects.create(
@@ -859,7 +859,7 @@ class Test(TestCase):
 
         nodes = (
             MultiOrderedModel.objects
-            .pre_filter(first_position__gt=0)
+            .tree_filter(first_position__gt=0)
             .order_siblings_by("-second_position")
         )
         self.assertEqual(
@@ -868,6 +868,57 @@ class Test(TestCase):
                 tree.root,
                 tree.child2,
                 tree.child2_1,
+                tree.child2_2,
+            ],
+        )
+
+    def test_tree_filter_Q_objects(self):
+        tree = self.create_tree()
+        # Tree-filter should remove children if
+        # the parent does not meet the filtering criteria
+        nodes = Model.objects.tree_filter(Q(name__in=["root","1-1","2","2-1","2-2"]))
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child2,
+                tree.child2_1,
+                tree.child2_2,
+            ],
+        )
+
+    def test_tree_filter_Q_mix(self):
+        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+
+        tree.root = MultiOrderedModel.objects.create(
+            name="root", first_position=1, second_position=2
+        )
+        tree.child1 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=1, second_position=0, name="1"
+        )
+        tree.child2 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=1, second_position=2, name="2"
+        )
+        tree.child1_1 = MultiOrderedModel.objects.create(
+            parent=tree.child1, first_position=1, second_position=1, name="1-1"
+        )
+        tree.child2_1 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=1, second_position=1, name="2-1"
+        )
+        tree.child2_2 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=1, second_position=2, name="2-2"
+        )
+        # Tree-filter should remove children if
+        # the parent does not meet the filtering criteria
+        nodes = (
+            MultiOrderedModel.objects
+            .tree_filter(Q(first_position=1), second_position=2)
+        )
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child2,
                 tree.child2_2,
             ],
         )
