@@ -753,3 +753,121 @@ class Test(TestCase):
                 tree.child2_2,
             ],
         )
+
+    def test_pre_exclude(self):
+        tree = self.create_tree()
+        # Pre-filter should remove children if
+        # the parent meets the filtering criteria
+        nodes = Model.objects.pre_exclude(name="2")
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child1,
+                tree.child1_1,
+            ],
+        )
+
+    def test_pre_filter(self):
+        tree = self.create_tree()
+        # Pre-filter should remove children if
+        # the parent does not meet the filtering criteria
+        nodes = Model.objects.pre_filter(name__in=["root","1-1","2","2-1","2-2"])
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child2,
+                tree.child2_1,
+                tree.child2_2,
+            ],
+        )
+
+    def test_pre_filter_chaining(self):
+        tree = self.create_tree()
+        # Pre-filter should remove children if
+        # the parent does not meet the filtering criteria
+        nodes = Model.objects.pre_exclude(name="2-2").pre_filter(name__in=["root","1-1","2","2-1","2-2"])
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child2,
+                tree.child2_1,
+            ],
+        )
+
+    def test_pre_filter_related(self):
+        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+
+        tree.root = RelatedOrderModel.objects.create(name="root")
+        tree.root_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.root, order=0
+        )
+        tree.child1 = RelatedOrderModel.objects.create(parent=tree.root, name="1")
+        tree.child1_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child1, order=0
+        )
+        tree.child2 = RelatedOrderModel.objects.create(parent=tree.root, name="2")
+        tree.child2_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child2, order=1
+        )
+        tree.child1_1 = RelatedOrderModel.objects.create(parent=tree.child1, name="1-1")
+        tree.child1_1_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child1_1, order=0
+        )
+        tree.child2_1 = RelatedOrderModel.objects.create(parent=tree.child2, name="2-1")
+        tree.child2_1_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child2_1, order=0
+        )
+        tree.child2_2 = RelatedOrderModel.objects.create(parent=tree.child2, name="2-2")
+        tree.child2_2_related = OneToOneRelatedOrder.objects.create(
+            relatedmodel=tree.child2_2, order=1
+        )
+
+        nodes = RelatedOrderModel.objects.pre_filter(related__order=0)
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child1,
+                tree.child1_1,
+            ],
+        )
+
+    def test_pre_filter_with_order(self):
+        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+
+        tree.root = MultiOrderedModel.objects.create(
+            name="root", first_position=1,
+        )
+        tree.child1 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=0, second_position=1, name="1"
+        )
+        tree.child2 = MultiOrderedModel.objects.create(
+            parent=tree.root, first_position=1, second_position=0, name="2"
+        )
+        tree.child1_1 = MultiOrderedModel.objects.create(
+            parent=tree.child1, first_position=1, second_position=1, name="1-1"
+        )
+        tree.child2_1 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=1, second_position=1, name="2-1"
+        )
+        tree.child2_2 = MultiOrderedModel.objects.create(
+            parent=tree.child2, first_position=1, second_position=0, name="2-2"
+        )
+
+        nodes = (
+            MultiOrderedModel.objects
+            .pre_filter(first_position__gt=0)
+            .order_siblings_by("-second_position")
+        )
+        self.assertEqual(
+            list(nodes),
+            [
+                tree.root,
+                tree.child2,
+                tree.child2_1,
+                tree.child2_2,
+            ],
+        )

@@ -27,6 +27,7 @@ class TreeQuerySet(models.QuerySet):
         """
         if tree_fields:
             self.query.__class__ = TreeQuery
+            self.query._setup_query()
         else:
             self.query.__class__ = Query
         return self
@@ -45,7 +46,32 @@ class TreeQuerySet(models.QuerySet):
         to order tree siblings by those model fields
         """
         self.query.__class__ = TreeQuery
+        self.query._setup_query()
         self.query.sibling_order = order_by
+        return self
+
+    def pre_filter(self, **filter):
+        """
+        Sets TreeQuery pre_filter attribute
+
+        Pass a dict of fields and their values to filter by
+        """
+        self.query.__class__ = TreeQuery
+        self.query._setup_query()
+        filter_tuple = (True, filter)
+        self.query.pre_filter.append(filter_tuple)
+        return self
+    
+    def pre_exclude(self, **filter):
+        """
+        Sets TreeQuery pre_filter attribute
+
+        Pass a dict of fields and their values to filter by
+        """
+        self.query.__class__ = TreeQuery
+        self.query._setup_query()
+        exclude_tuple = (False, filter)
+        self.query.pre_filter.append(exclude_tuple)
         return self
 
     def as_manager(cls, *, with_tree_fields=False):  # noqa: N805
