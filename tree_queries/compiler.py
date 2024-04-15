@@ -39,6 +39,9 @@ class TreeQuery(Query):
             # so we can avoid recursion
             self.rank_table_query = QuerySet(model=_find_tree_model(self.model))
 
+        if not hasattr(self, "extra_fields"):
+            self.extra_fields = {}
+
     def get_compiler(self, using=None, connection=None, **kwargs):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
@@ -57,10 +60,14 @@ class TreeQuery(Query):
     def get_rank_table_query(self):
         return self.rank_table_query
 
+    def get_extra_fields(self):
+        return self.extra_fields
+
 
 class TreeCompiler(SQLCompiler):
     CTE_POSTGRESQL = """
     WITH RECURSIVE __rank_table(
+        {extra_fields_columns}
         "{pk}",
         "{parent}",
         "rank_order"
@@ -68,12 +75,14 @@ class TreeCompiler(SQLCompiler):
         {rank_table}
     ),
     __tree (
+        {extra_fields_names}
         "tree_depth",
         "tree_path",
         "tree_ordering",
         "tree_pk"
     ) AS (
         SELECT
+            {extra_fields_initial}
             0 AS tree_depth,
             array[T.{pk}] AS tree_path,
             array[T.rank_order] AS tree_ordering,
@@ -84,6 +93,7 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
+            {extra_fields_recursive}
             __tree.tree_depth + 1 AS tree_depth,
             __tree.tree_path || T.{pk},
             __tree.tree_ordering || T.rank_order,
@@ -180,6 +190,7 @@ class TreeCompiler(SQLCompiler):
             # Values allows us to both limit and specify the order of
             # the columns selected so that they match the CTE
             .values(
+                *self.query.get_extra_fields().values(),
                 "pk",
                 "parent",
                 rank_order=Window(
@@ -240,6 +251,23 @@ class TreeCompiler(SQLCompiler):
         rank_table_sql, rank_table_params = self.get_rank_table()
         params["rank_table"] = rank_table_sql
 
+        extra_fields = self.query.get_extra_fields()
+        params |= {
+            # TODO quoting
+            "extra_fields_columns": "".join(
+                f"{column}, " for column in extra_fields.values()
+            ),
+            "extra_fields_names": "".join(f"{name}, " for name in extra_fields),
+            "extra_fields_initial": "".join(
+                f"array[T.{column}]::text[] AS {name}, "
+                for name, column in extra_fields.items()
+            ),
+            "extra_fields_recursive": "".join(
+                f"__tree.{name} || T.{column}, "
+                for name, column in extra_fields.items()
+            ),
+        }
+
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
 
@@ -259,7 +287,8 @@ class TreeCompiler(SQLCompiler):
                 # summary query or when using .values() or .values_list()
                 select={}
                 if skip_tree_fields or self.query.values_select
-                else {
+                else {name: f"__tree.{name}" for name in extra_fields}
+                | {
                     "tree_depth": "__tree.tree_depth",
                     "tree_path": "__tree.tree_path",
                     "tree_ordering": "__tree.tree_ordering",

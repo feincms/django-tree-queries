@@ -76,6 +76,12 @@ class TreeQuerySet(models.QuerySet):
         )
         return self
 
+    def extra_fields(self, **extra_fields):
+        self.query.__class__ = TreeQuery
+        self.query._setup_query()
+        self.query.extra_fields = extra_fields
+        return self
+
     def as_manager(cls, *, with_tree_fields=False):  # noqa: N805
         manager_class = TreeManager.from_queryset(cls)
         # Only used in deconstruct:
