@@ -50,28 +50,32 @@ class TreeQuerySet(models.QuerySet):
         self.query.sibling_order = order_by
         return self
 
-    def tree_filter(self, *Q_objects, **filter):
+    def tree_filter(self, *args, **kwargs):
         """
-        Sets TreeQuery tree_filter attribute
+        Adds a filter to the TreeQuery rank_table_query
 
-        Pass a dict of fields and their values to filter by
+        Takes the same arguements as a Django QuerySet .filter()
         """
         self.query.__class__ = TreeQuery
         self.query._setup_query()
-        filter_tuple = (True, Q_objects, filter)
-        self.query.tree_filter.append(filter_tuple)
+        self.query.rank_table_query = (
+            self.query.rank_table_query
+            .filter(*args, **kwargs)
+        )
         return self
     
-    def tree_exclude(self, *Q_objects, **filter):
+    def tree_exclude(self, *args, **kwargs):
         """
-        Sets TreeQuery tree_filter attribute
+        Adds a filter to the TreeQuery rank_table_query
 
-        Pass a dict of fields and their values to filter by
+        Takes the same arguements as a Django QuerySet .exclude()
         """
         self.query.__class__ = TreeQuery
         self.query._setup_query()
-        exclude_tuple = (False, Q_objects, filter)
-        self.query.tree_filter.append(exclude_tuple)
+        self.query.rank_table_query = (
+            self.query.rank_table_query
+            .exclude(*args, **kwargs)
+        )
         return self
 
     def as_manager(cls, *, with_tree_fields=False):  # noqa: N805

@@ -1,5 +1,6 @@
 from django.db import connections
-from django.db.models import Value
+from django.db.models import Value, F, Window, Expression, QuerySet
+from django.db.models.functions import RowNumber
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
 
@@ -22,7 +23,7 @@ class TreeQuery(Query):
         Run on initialization and at the end of chaining. Any attributes that
         would normally be set in __init__() should go here instead.
         """
-        # We add the variables for `sibling_order` and `tree_filter` here so they
+        # We add the variables for `sibling_order` and `rank_table_query` here so they
         # act as instance variables which do not persist between user queries
         # the way class variables do
 
@@ -36,9 +37,13 @@ class TreeQuery(Query):
                 else opts.pk.attname
             )
 
-        # Only add the tree_filter attribute if the query doesn't already have one to preserve cloning behavior
-        if not hasattr(self, "tree_filter"):
-            self.tree_filter = []
+        # Only add the rank_table_query attribute if the query doesn't already have one to preserve cloning behavior
+        if not hasattr(self, "rank_table_query"):
+            # Create a default QuerySet for the rank_table to use
+            # so we can avoid recursion
+            self.rank_table_query = QuerySet(
+                model=_find_tree_model(self.model)
+            )
 
 
     def get_compiler(self, using=None, connection=None, **kwargs):
@@ -56,8 +61,8 @@ class TreeQuery(Query):
     def get_sibling_order(self):
         return self.sibling_order
 
-    def get_tree_filter(self):
-        return self.tree_filter
+    def get_rank_table_query(self):
+        return self.rank_table_query
 
 class TreeCompiler(SQLCompiler):
     CTE_POSTGRESQL = """
@@ -66,12 +71,7 @@ class TreeCompiler(SQLCompiler):
         "{parent}",
         "rank_order"
     ) AS (
-        SELECT
-            {rank_pk},
-            {rank_parent},
-            ROW_NUMBER() OVER (ORDER BY {rank_order_by})
-        FROM {rank_from}
-        {tree_filter}
+        {rank_table}
     ),
     __tree (
         "tree_depth",
@@ -101,12 +101,7 @@ class TreeCompiler(SQLCompiler):
 
     CTE_MYSQL = """
     WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
-        SELECT
-            {rank_pk},
-            {rank_parent},
-            ROW_NUMBER() OVER (ORDER BY {rank_order_by})
-        FROM {rank_from}
-        {tree_filter}
+        {rank_table}
     ),
     __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
@@ -133,12 +128,7 @@ class TreeCompiler(SQLCompiler):
 
     CTE_SQLITE3 = """
     WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
-        SELECT
-            {rank_pk},
-            {rank_parent},
-            row_number() OVER (ORDER BY {rank_order_by})
-        FROM {rank_from}
-        {tree_filter}
+        {rank_table}
     ),
     __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
@@ -161,14 +151,8 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
-    def get_rank_table_params(self):
-        """
-        This method uses a simple django queryset to generate sql
-        that can be used to create the __rank_table that tree-filters
-        and orders siblings. This is done so that any joins required
-        by order_by or filter/exclude are pre-calculated by django
-        """
-        # Get can validate sibling_order
+    def get_rank_table(self):
+        # Get and validate sibling_order
         sibling_order = self.query.get_sibling_order()
 
         if isinstance(sibling_order, (list, tuple)):
@@ -180,56 +164,41 @@ class TreeCompiler(SQLCompiler):
                 "Sibling order must be a string or a list or tuple of strings."
             )
         
-        # Get tree_filter
-        tree_filter = self.query.get_tree_filter()
-
-        # Use Django to make a SQL query that can be repurposed for __rank_table
-        base_query = _find_tree_model(self.query.model).objects.only("pk", "parent")
-
-        # Add tree_filters if they exist
-        if tree_filter:
-            # Apply filters and excludes to the query in the order provided by the user
-            for is_filter, filter_Q, filter_fields in tree_filter:
-                if is_filter:
-                    base_query = base_query.filter(*filter_Q, **filter_fields)
+        # Convert strings to expressions. This is to maintain backwards compatibility
+        # with Django versions < 4.1
+        base_order = []
+        for field in order_fields:
+            if isinstance(field, Expression):
+                base_order.append(field)
+            elif isinstance(field, str):
+                if field[0] == "-":
+                    base_order.append(F(field[1:]).desc())
                 else:
-                    base_query = base_query.exclude(*filter_Q, **filter_fields)
+                    base_order.append(F(field).asc())
+        order_fields = base_order
+        # End of back compat code
 
-        # Apply sibling_order
-        base_query = base_query.order_by(*order_fields).query
+        # Get the rank table query
+        rank_table_query = self.query.get_rank_table_query()
 
-        # Get SQL and parameters
-        base_compiler = SQLCompiler(base_query, self.connection, None)
-        base_sql, base_params = base_compiler.as_sql()
+        rank_table_query = (
+            rank_table_query
+            .order_by() # Ensure there is no ORDER BY at the end of the SQL 
+            # Values allows us to both limit and specify the order of
+            # the columns selected so that they match the CTE
+            .values(
+                "pk", 
+                "parent", 
+                rank_order=Window(
+                    expression=RowNumber(),
+                    order_by=order_fields,
+                ),
+            )
+        )
+        
+        rank_table_sql, rank_table_params = rank_table_query.query.sql_with_params()
 
-        # Split sql on the last ORDER BY to get the rank_order param
-        head, sep, tail = base_sql.rpartition("ORDER BY")
-
-        # Add rank_order_by to params
-        rank_table_params = {
-            "rank_order_by": tail.strip(),
-        }
-
-        # Split on the first WHERE if present to get the tree_filter param
-        if tree_filter:
-            head, sep, tail = head.partition("WHERE")
-            rank_table_params["tree_filter"] = "WHERE " + tail.strip() # Note the space after WHERE
-        else:
-            rank_table_params["tree_filter"] = ""
-
-        # Split on the first FROM to get any joins etc.
-        head, sep, tail = head.partition("FROM")
-        rank_table_params["rank_from"] = tail.strip()
-
-        # Identify the parent and primary key fields
-        head, sep, tail = head.partition("SELECT")
-        for field in tail.split(","):
-            if "parent_id" in field:  # XXX Taking advantage of Hardcoded.
-                rank_table_params["rank_parent"] = field.strip()
-            else:
-                rank_table_params["rank_pk"] = field.strip()
-
-        return rank_table_params, base_params
+        return rank_table_sql, rank_table_params
 
     def as_sql(self, *args, **kwargs):
         # Try detecting if we're used in a EXISTS(1 as "a") subquery like
@@ -274,9 +243,9 @@ class TreeCompiler(SQLCompiler):
             "sep": SEPARATOR,
         }
 
-        # Get params needed by the rank_table
-        rank_table_params, rank_table_sql_params = self.get_rank_table_params()
-        params.update(rank_table_params)
+        # Get the rank_table SQL and params
+        rank_table_sql, rank_table_params = self.get_rank_table()
+        params["rank_table"] = rank_table_sql
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
@@ -328,7 +297,7 @@ class TreeCompiler(SQLCompiler):
 
         # Pass any additional rank table sql paramaters so that the db backend can handle them.
         # This only works because we know that the CTE is at the start of the query.
-        return ("".join([explain, cte.format(**params), sql_0]), rank_table_sql_params + sql_1)
+        return ("".join([explain, cte.format(**params), sql_0]), rank_table_params + sql_1)
 
     def get_converters(self, expressions):
         converters = super().get_converters(expressions)
