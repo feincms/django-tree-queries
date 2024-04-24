@@ -3,6 +3,7 @@ from django.db.models import Value, F, Window, Expression, QuerySet
 from django.db.models.functions import RowNumber
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
+import django
 
 
 SEPARATOR = "\x1f"
@@ -166,17 +167,17 @@ class TreeCompiler(SQLCompiler):
         
         # Convert strings to expressions. This is to maintain backwards compatibility
         # with Django versions < 4.1
-        base_order = []
-        for field in order_fields:
-            if isinstance(field, Expression):
-                base_order.append(field)
-            elif isinstance(field, str):
-                if field[0] == "-":
-                    base_order.append(F(field[1:]).desc())
-                else:
-                    base_order.append(F(field).asc())
-        order_fields = base_order
-        # End of back compat code
+        if django.VERSION < (4, 1):
+            base_order = []
+            for field in order_fields:
+                if isinstance(field, Expression):
+                    base_order.append(field)
+                elif isinstance(field, str):
+                    if field[0] == "-":
+                        base_order.append(F(field[1:]).desc())
+                    else:
+                        base_order.append(F(field).asc())
+            order_fields = base_order
 
         # Get the rank table query
         rank_table_query = self.query.get_rank_table_query()
