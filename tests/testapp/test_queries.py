@@ -25,11 +25,13 @@ from testapp.models import (
 from tree_queries.compiler import SEPARATOR, TreeQuery
 from tree_queries.query import pk
 
+from types import SimpleNamespace
+
 
 @override_settings(DEBUG=True)
 class Test(TestCase):
     def create_tree(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
         tree.root = Model.objects.create(name="root")
         tree.child1 = Model.objects.create(parent=tree.root, order=0, name="1")
         tree.child2 = Model.objects.create(parent=tree.root, order=1, name="2")
@@ -257,7 +259,7 @@ class Test(TestCase):
         self.assertNotIn("root", html)
 
     def test_string_ordering(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
 
         tree.americas = StringOrderedModel.objects.create(name="Americas")
         tree.europe = StringOrderedModel.objects.create(name="Europe")
@@ -373,7 +375,7 @@ class Test(TestCase):
     def test_reference(self):
         tree = self.create_tree()
 
-        references = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        references = SimpleNamespace()
         references.none = ReferenceModel.objects.create(position=0)
         references.root = ReferenceModel.objects.create(
             position=1, tree_field=tree.root
@@ -534,7 +536,7 @@ class Test(TestCase):
         )
 
     def test_sibling_ordering(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
 
         tree.root = MultiOrderedModel.objects.create(name="root")
         tree.child1 = MultiOrderedModel.objects.create(
@@ -682,7 +684,7 @@ class Test(TestCase):
         )
 
     def test_multi_field_order(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
 
         tree.root = MultiOrderedModel.objects.create(name="root")
         tree.child1 = MultiOrderedModel.objects.create(
@@ -717,7 +719,7 @@ class Test(TestCase):
         )
 
     def test_order_by_related(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
 
         tree.root = RelatedOrderModel.objects.create(name="root")
         tree.child1 = RelatedOrderModel.objects.create(parent=tree.root, name="1")
@@ -798,7 +800,7 @@ class Test(TestCase):
         )
 
     def test_tree_filter_related(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
 
         tree.root = RelatedOrderModel.objects.create(name="root")
         tree.root_related = OneToOneRelatedOrder.objects.create(
@@ -836,7 +838,7 @@ class Test(TestCase):
         )
 
     def test_tree_filter_with_order(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
 
         tree.root = MultiOrderedModel.objects.create(
             name="root", first_position=1,
@@ -888,7 +890,7 @@ class Test(TestCase):
         )
 
     def test_tree_filter_Q_mix(self):
-        tree = type("Namespace", (), {})()  # SimpleNamespace for PY2...
+        tree = SimpleNamespace()
 
         tree.root = MultiOrderedModel.objects.create(
             name="root", first_position=1, second_position=2
