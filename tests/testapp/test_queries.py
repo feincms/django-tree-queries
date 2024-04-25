@@ -37,7 +37,7 @@ class Test(TestCase):
         tree.child2 = Model.objects.create(parent=tree.root, order=1, name="2")
         tree.child1_1 = Model.objects.create(parent=tree.child1, order=0, name="1-1")
         tree.child2_1 = Model.objects.create(parent=tree.child2, order=0, name="2-1")
-        tree.child2_2 = Model.objects.create(parent=tree.child2, order=1, name="2-2")
+        tree.child2_2 = Model.objects.create(parent=tree.child2, order=42, name="2-2")
         return tree
 
     def test_stuff(self):
@@ -927,7 +927,9 @@ class Test(TestCase):
 
     def test_tree_fields(self):
         self.create_tree()
-        names = [obj.tree_names for obj in Model.objects.tree_fields(tree_names="name")]
+        qs = Model.objects.tree_fields(tree_names="name", tree_orders="order")
+
+        names = [obj.tree_names for obj in qs]
         self.assertEqual(
             names,
             [
@@ -940,10 +942,10 @@ class Test(TestCase):
             ],
         )
 
-        orders = [
-            obj.tree_orders for obj in Model.objects.tree_fields(tree_orders="order")
-        ]
-        self.assertEqual(orders, [[0], [0, 0], [0, 0, 0], [0, 1], [0, 1, 0], [0, 1, 1]])
+        orders = [obj.tree_orders for obj in qs]
+        self.assertEqual(
+            orders, [[0], [0, 0], [0, 0, 0], [0, 1], [0, 1, 0], [0, 1, 42]]
+        )
 
         # ids = [obj.tree_pks for obj in Model.objects.tree_fields(tree_pks="custom_id")]
         # self.assertIsInstance(ids[0][0], int)
