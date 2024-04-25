@@ -253,22 +253,20 @@ class TreeCompiler(SQLCompiler):
 
         extra_fields = self.query.get_extra_fields()
         qn = self.connection.ops.quote_name
-        params.update(
-            {
-                "extra_fields_columns": "".join(
-                    f"{qn(column)}, " for column in extra_fields.values()
-                ),
-                "extra_fields_names": "".join(f"{qn(name)}, " for name in extra_fields),
-                "extra_fields_initial": "".join(
-                    f"array[T.{qn(column)}]::text[] AS {qn(name)}, "
-                    for name, column in extra_fields.items()
-                ),
-                "extra_fields_recursive": "".join(
-                    f"__tree.{qn(name)} || T.{qn(column)}, "
-                    for name, column in extra_fields.items()
-                ),
-            }
-        )
+        params.update({
+            "extra_fields_columns": "".join(
+                f"{qn(column)}, " for column in extra_fields.values()
+            ),
+            "extra_fields_names": "".join(f"{qn(name)}, " for name in extra_fields),
+            "extra_fields_initial": "".join(
+                f"array[T.{qn(column)}]::text[] AS {qn(name)}, "
+                for name, column in extra_fields.items()
+            ),
+            "extra_fields_recursive": "".join(
+                f"__tree.{qn(name)} || T.{qn(column)}, "
+                for name, column in extra_fields.items()
+            ),
+        })
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()

@@ -503,9 +503,7 @@ class Test(TestCase):
         else:
             qs = qs.annotate(
                 is_my_field=RawSQL(
-                    'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
-                        pk=pk(tree.child2_1), sep=SEPARATOR
-                    ),
+                    f'instr(__tree.tree_path, "{SEPARATOR}{pk(tree.child2_1)}{SEPARATOR}") <> 0',
                     [],
                     output_field=models.BooleanField(),
                 )
