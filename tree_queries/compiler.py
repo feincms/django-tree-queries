@@ -104,11 +104,12 @@ class TreeCompiler(SQLCompiler):
     """
 
     CTE_MYSQL = """
-    WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
+    WITH RECURSIVE __rank_table({tree_fields_columns} {pk}, {parent}, rank_order) AS (
         {rank_table}
     ),
-    __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+    __tree({tree_fields_names} tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
+            {tree_fields_initial}
             0,
             -- Limit to max. 50 levels...
             CAST(CONCAT("{sep}", {pk}, "{sep}") AS char(1000)),
@@ -121,6 +122,7 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
+            {tree_fields_recursive}
             __tree.tree_depth + 1,
             CONCAT(__tree.tree_path, T2.{pk}, "{sep}"),
             CONCAT(__tree.tree_ordering, LPAD(CONCAT(T2.rank_order, "{sep}"), 20, "0")),
@@ -259,10 +261,12 @@ class TreeCompiler(SQLCompiler):
             cte_recursive = "__tree.{name} || T.{column}, "
         elif self.connection.vendor == "sqlite":
             cte = self.CTE_SQLITE
-            cte_initial = 'printf("{sep}%%s{sep}", {column}) AS {name}, '
-            cte_recursive = '__tree.{name} || printf("%%s{sep}", T.{column}),'
+            cte_initial = 'printf("{sep}%%s{sep}", {column}) {name}, '
+            cte_recursive = '__tree.{name} || printf("%%s{sep}", T.{column}), '
         elif self.connection.vendor == "mysql":
             cte = self.CTE_MYSQL
+            cte_initial = 'CAST(CONCAT("{sep}", {column}, "{sep}") AS char(1000)), '
+            cte_recursive = 'CONCAT(__tree.{name}, T2.{column}, "{sep}"), '
 
         tree_fields = self.query.get_tree_fields()
         qn = self.connection.ops.quote_name

@@ -1,9 +1,8 @@
-import unittest
 from types import SimpleNamespace
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db import connection, connections, models
+from django.db import connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
 from django.test import TestCase, override_settings
@@ -926,9 +925,6 @@ class Test(TestCase):
             ],
         )
 
-    @unittest.skipUnless(
-        connection.vendor in {"postgresql", "sqlite"}, "Not all DB engines supported"
-    )
     def test_tree_fields(self):
         self.create_tree()
         names = [obj.tree_names for obj in Model.objects.tree_fields(tree_names="name")]
