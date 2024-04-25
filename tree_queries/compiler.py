@@ -131,11 +131,12 @@ class TreeCompiler(SQLCompiler):
     """
 
     CTE_SQLITE = """
-    WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
+    WITH RECURSIVE __rank_table({tree_fields_columns} {pk}, {parent}, rank_order) AS (
         {rank_table}
     ),
-    __tree(tree_depth, tree_path, tree_ordering, tree_pk) AS (
+    __tree({tree_fields_names} tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
+            {tree_fields_initial}
             0 tree_depth,
             printf("{sep}%%s{sep}", {pk}) tree_path,
             printf("{sep}%%020s{sep}", T.rank_order) tree_ordering,
@@ -146,6 +147,7 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
+            {tree_fields_recursive}
             __tree.tree_depth + 1,
             __tree.tree_path || printf("%%s{sep}", T.{pk}),
             __tree.tree_ordering || printf("%%020s{sep}", T.rank_order),
@@ -251,6 +253,17 @@ class TreeCompiler(SQLCompiler):
         rank_table_sql, rank_table_params = self.get_rank_table()
         params["rank_table"] = rank_table_sql
 
+        if self.connection.vendor == "postgresql":
+            cte = self.CTE_POSTGRESQL
+            cte_initial = "array[T.{column}]::text[] AS {name}, "
+            cte_recursive = "__tree.{name} || T.{column}, "
+        elif self.connection.vendor == "sqlite":
+            cte = self.CTE_SQLITE
+            cte_initial = 'printf("{sep}%%s{sep}", {column}) AS {name}, '
+            cte_recursive = '__tree.{name} || printf("%%s{sep}", T.{column}),'
+        elif self.connection.vendor == "mysql":
+            cte = self.CTE_MYSQL
+
         tree_fields = self.query.get_tree_fields()
         qn = self.connection.ops.quote_name
         params.update({
@@ -259,11 +272,11 @@ class TreeCompiler(SQLCompiler):
             ),
             "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
             "tree_fields_initial": "".join(
-                f"array[T.{qn(column)}]::text[] AS {qn(name)}, "
+                cte_initial.format(column=qn(column), name=qn(name), sep=SEPARATOR)
                 for name, column in tree_fields.items()
             ),
             "tree_fields_recursive": "".join(
-                f"__tree.{qn(name)} || T.{qn(column)}, "
+                cte_recursive.format(column=qn(column), name=qn(name), sep=SEPARATOR)
                 for name, column in tree_fields.items()
             ),
         })
@@ -305,12 +318,6 @@ class TreeCompiler(SQLCompiler):
                 ),
             )
 
-        if self.connection.vendor == "postgresql":
-            cte = self.CTE_POSTGRESQL
-        elif self.connection.vendor == "sqlite":
-            cte = self.CTE_SQLITE
-        elif self.connection.vendor == "mysql":
-            cte = self.CTE_MYSQL
         sql_0, sql_1 = super().as_sql(*args, **kwargs)
         explain = ""
         if sql_0.startswith("EXPLAIN "):
@@ -325,12 +332,15 @@ class TreeCompiler(SQLCompiler):
 
     def get_converters(self, expressions):
         converters = super().get_converters(expressions)
+        tree_fields = {"__tree.tree_path", "__tree.tree_ordering"} | {
+            f"__tree.{name}" for name in self.query.tree_fields
+        }
         for i, expression in enumerate(expressions):
             # We care about tree fields and annotations only
             if not hasattr(expression, "sql"):
                 continue
 
-            if expression.sql in {"__tree.tree_path", "__tree.tree_ordering"}:
+            if expression.sql in tree_fields:
                 converters[i] = ([converter], expression)
         return converters
 
