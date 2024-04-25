@@ -940,6 +940,11 @@ class Test(TestCase):
             ],
         )
 
+        orders = [
+            obj.tree_orders for obj in Model.objects.tree_fields(tree_orders="order")
+        ]
+        self.assertEqual(orders, [[0], [0, 0], [0, 0, 0], [0, 1], [0, 1, 0], [0, 1, 1]])
+
         # ids = [obj.tree_pks for obj in Model.objects.tree_fields(tree_pks="custom_id")]
         # self.assertIsInstance(ids[0][0], int)
 

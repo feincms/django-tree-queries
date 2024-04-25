@@ -258,7 +258,7 @@ class TreeCompiler(SQLCompiler):
         if self.connection.vendor == "postgresql":
             cte = self.CTE_POSTGRESQL
             cte_initial = "array[T.{column}]::text[] AS {name}, "
-            cte_recursive = "__tree.{name} || T.{column}, "
+            cte_recursive = "__tree.{name} || T.{column}::text, "
         elif self.connection.vendor == "sqlite":
             cte = self.CTE_SQLITE
             cte_initial = 'printf("{sep}%%s{sep}", {column}) {name}, '
