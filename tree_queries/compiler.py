@@ -253,20 +253,22 @@ class TreeCompiler(SQLCompiler):
 
         extra_fields = self.query.get_extra_fields()
         qn = self.connection.ops.quote_name
-        params |= {
-            "extra_fields_columns": "".join(
-                f"{qn(column)}, " for column in extra_fields.values()
-            ),
-            "extra_fields_names": "".join(f"{qn(name)}, " for name in extra_fields),
-            "extra_fields_initial": "".join(
-                f"array[T.{qn(column)}]::text[] AS {qn(name)}, "
-                for name, column in extra_fields.items()
-            ),
-            "extra_fields_recursive": "".join(
-                f"__tree.{qn(name)} || T.{qn(column)}, "
-                for name, column in extra_fields.items()
-            ),
-        }
+        params.update(
+            {
+                "extra_fields_columns": "".join(
+                    f"{qn(column)}, " for column in extra_fields.values()
+                ),
+                "extra_fields_names": "".join(f"{qn(name)}, " for name in extra_fields),
+                "extra_fields_initial": "".join(
+                    f"array[T.{qn(column)}]::text[] AS {qn(name)}, "
+                    for name, column in extra_fields.items()
+                ),
+                "extra_fields_recursive": "".join(
+                    f"__tree.{qn(name)} || T.{qn(column)}, "
+                    for name, column in extra_fields.items()
+                ),
+            }
+        )
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
@@ -282,17 +284,16 @@ class TreeCompiler(SQLCompiler):
             if aliases:
                 tree_params["db_table"] = aliases[0]
 
+            select = {
+                "tree_depth": "__tree.tree_depth",
+                "tree_path": "__tree.tree_path",
+                "tree_ordering": "__tree.tree_ordering",
+            }
+            select.update({name: f"__tree.{name}" for name in extra_fields})
             self.query.add_extra(
                 # Do not add extra fields to the select statement when it is a
                 # summary query or when using .values() or .values_list()
-                select={}
-                if skip_tree_fields or self.query.values_select
-                else {name: f"__tree.{name}" for name in extra_fields}
-                | {
-                    "tree_depth": "__tree.tree_depth",
-                    "tree_path": "__tree.tree_path",
-                    "tree_ordering": "__tree.tree_ordering",
-                },
+                select={} if skip_tree_fields or self.query.values_select else select,
                 select_params=None,
                 where=["__tree.tree_pk = {db_table}.{pk}".format(**tree_params)],
                 params=None,
