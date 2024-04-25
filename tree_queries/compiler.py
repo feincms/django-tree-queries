@@ -104,10 +104,21 @@ class TreeCompiler(SQLCompiler):
     """
 
     CTE_MYSQL = """
-    WITH RECURSIVE __rank_table({tree_fields_columns} {pk}, {parent}, rank_order) AS (
+    WITH RECURSIVE __rank_table(
+        {tree_fields_columns}
+        {pk},
+        {parent},
+        rank_order
+    ) AS (
         {rank_table}
     ),
-    __tree({tree_fields_names} tree_depth, tree_path, tree_ordering, tree_pk) AS (
+    __tree(
+        {tree_fields_names}
+        tree_depth,
+        tree_path,
+        tree_ordering,
+        tree_pk
+    ) AS (
         SELECT
             {tree_fields_initial}
             0,
@@ -133,10 +144,21 @@ class TreeCompiler(SQLCompiler):
     """
 
     CTE_SQLITE = """
-    WITH RECURSIVE __rank_table({tree_fields_columns} {pk}, {parent}, rank_order) AS (
+    WITH RECURSIVE __rank_table(
+        {tree_fields_columns}
+        {pk},
+        {parent},
+        rank_order
+    ) AS (
         {rank_table}
     ),
-    __tree({tree_fields_names} tree_depth, tree_path, tree_ordering, tree_pk) AS (
+    __tree(
+        {tree_fields_names}
+        tree_depth,
+        tree_path,
+        tree_ordering,
+        tree_pk
+    ) AS (
         SELECT
             {tree_fields_initial}
             0,
