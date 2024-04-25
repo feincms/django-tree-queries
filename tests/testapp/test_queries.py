@@ -943,3 +943,9 @@ class Test(TestCase):
                 ["root", "2", "2-2"],
             ],
         )
+
+        # ids = [obj.tree_pks for obj in Model.objects.tree_fields(tree_pks="custom_id")]
+        # self.assertIsInstance(ids[0][0], int)
+
+        # ids = [obj.tree_pks for obj in Model.objects.tree_fields(tree_pks="parent_id")]
+        # self.assertEqual(ids[0], [""])

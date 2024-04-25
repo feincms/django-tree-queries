@@ -4,6 +4,16 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Reimplemented the rank table construction using a real queryset; this enables
+  support for pre-filtering the tree queryset using ``.tree_filter()`` and
+  ``.tree_exclude()``. Thanks rhomboss!
+- Added a ``.tree_fields()`` method to allow adding additional columns to the
+  tree queryset, allowing collecting ancestors fields directly when running the
+  initial query. For example, ``.tree_fields(tree_names="name")`` will collect
+  all ``name`` fields in a ``tree_fields`` array on the model instances. For
+  now the code only supports string fields and integer fields. Also,
+  MySQL/MariaDB aren't supported yet.
+
 
 0.18 (2024-04-03)
 ~~~~~~~~~~~~~~~~~
