@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.19 (2024-04-25)
+~~~~~~~~~~~~~~~~~
+
 - Reimplemented the rank table construction using a real queryset; this enables
   support for pre-filtering the tree queryset using ``.tree_filter()`` and
   ``.tree_exclude()``. Thanks rhomboss!
