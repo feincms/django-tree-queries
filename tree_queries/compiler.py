@@ -39,8 +39,8 @@ class TreeQuery(Query):
             # so we can avoid recursion
             self.rank_table_query = QuerySet(model=_find_tree_model(self.model))
 
-        if not hasattr(self, "extra_fields"):
-            self.extra_fields = {}
+        if not hasattr(self, "tree_fields"):
+            self.tree_fields = {}
 
     def get_compiler(self, using=None, connection=None, **kwargs):
         # Copied from django/db/models/sql/query.py
@@ -60,14 +60,14 @@ class TreeQuery(Query):
     def get_rank_table_query(self):
         return self.rank_table_query
 
-    def get_extra_fields(self):
-        return self.extra_fields
+    def get_tree_fields(self):
+        return self.tree_fields
 
 
 class TreeCompiler(SQLCompiler):
     CTE_POSTGRESQL = """
     WITH RECURSIVE __rank_table(
-        {extra_fields_columns}
+        {tree_fields_columns}
         "{pk}",
         "{parent}",
         "rank_order"
@@ -75,14 +75,14 @@ class TreeCompiler(SQLCompiler):
         {rank_table}
     ),
     __tree (
-        {extra_fields_names}
+        {tree_fields_names}
         "tree_depth",
         "tree_path",
         "tree_ordering",
         "tree_pk"
     ) AS (
         SELECT
-            {extra_fields_initial}
+            {tree_fields_initial}
             0 AS tree_depth,
             array[T.{pk}] AS tree_path,
             array[T.rank_order] AS tree_ordering,
@@ -93,7 +93,7 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
-            {extra_fields_recursive}
+            {tree_fields_recursive}
             __tree.tree_depth + 1 AS tree_depth,
             __tree.tree_path || T.{pk},
             __tree.tree_ordering || T.rank_order,
@@ -130,7 +130,7 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
-    CTE_SQLITE3 = """
+    CTE_SQLITE = """
     WITH RECURSIVE __rank_table({pk}, {parent}, rank_order) AS (
         {rank_table}
     ),
@@ -190,7 +190,7 @@ class TreeCompiler(SQLCompiler):
             # Values allows us to both limit and specify the order of
             # the columns selected so that they match the CTE
             .values(
-                *self.query.get_extra_fields().values(),
+                *self.query.get_tree_fields().values(),
                 "pk",
                 "parent",
                 rank_order=Window(
@@ -251,20 +251,20 @@ class TreeCompiler(SQLCompiler):
         rank_table_sql, rank_table_params = self.get_rank_table()
         params["rank_table"] = rank_table_sql
 
-        extra_fields = self.query.get_extra_fields()
+        tree_fields = self.query.get_tree_fields()
         qn = self.connection.ops.quote_name
         params.update({
-            "extra_fields_columns": "".join(
-                f"{qn(column)}, " for column in extra_fields.values()
+            "tree_fields_columns": "".join(
+                f"{qn(column)}, " for column in tree_fields.values()
             ),
-            "extra_fields_names": "".join(f"{qn(name)}, " for name in extra_fields),
-            "extra_fields_initial": "".join(
+            "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
+            "tree_fields_initial": "".join(
                 f"array[T.{qn(column)}]::text[] AS {qn(name)}, "
-                for name, column in extra_fields.items()
+                for name, column in tree_fields.items()
             ),
-            "extra_fields_recursive": "".join(
+            "tree_fields_recursive": "".join(
                 f"__tree.{qn(name)} || T.{qn(column)}, "
-                for name, column in extra_fields.items()
+                for name, column in tree_fields.items()
             ),
         })
 
@@ -287,7 +287,7 @@ class TreeCompiler(SQLCompiler):
                 "tree_path": "__tree.tree_path",
                 "tree_ordering": "__tree.tree_ordering",
             }
-            select.update({name: f"__tree.{name}" for name in extra_fields})
+            select.update({name: f"__tree.{name}" for name in tree_fields})
             self.query.add_extra(
                 # Do not add extra fields to the select statement when it is a
                 # summary query or when using .values() or .values_list()
@@ -308,7 +308,7 @@ class TreeCompiler(SQLCompiler):
         if self.connection.vendor == "postgresql":
             cte = self.CTE_POSTGRESQL
         elif self.connection.vendor == "sqlite":
-            cte = self.CTE_SQLITE3
+            cte = self.CTE_SQLITE
         elif self.connection.vendor == "mysql":
             cte = self.CTE_MYSQL
         sql_0, sql_1 = super().as_sql(*args, **kwargs)

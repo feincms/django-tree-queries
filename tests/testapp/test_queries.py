@@ -926,12 +926,12 @@ class Test(TestCase):
             ],
         )
 
-    @unittest.skipUnless(connection.vendor == "postgresql", "PostgreSQL tests")
-    def test_extra_fields(self):
+    @unittest.skipUnless(
+        connection.vendor in {"postgresql", "sqlite"}, "Not all DB engines supported"
+    )
+    def test_tree_fields(self):
         self.create_tree()
-        names = [
-            obj.tree_names for obj in Model.objects.extra_fields(tree_names="name")
-        ]
+        names = [obj.tree_names for obj in Model.objects.tree_fields(tree_names="name")]
         self.assertEqual(
             names,
             [

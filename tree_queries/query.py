@@ -76,10 +76,10 @@ class TreeQuerySet(models.QuerySet):
         )
         return self
 
-    def extra_fields(self, **extra_fields):
+    def tree_fields(self, **tree_fields):
         self.query.__class__ = TreeQuery
         self.query._setup_query()
-        self.query.extra_fields = extra_fields
+        self.query.tree_fields = tree_fields
         return self
 
     @classmethod
