@@ -252,18 +252,18 @@ class TreeCompiler(SQLCompiler):
         params["rank_table"] = rank_table_sql
 
         extra_fields = self.query.get_extra_fields()
+        qn = self.connection.ops.quote_name
         params |= {
-            # TODO quoting
             "extra_fields_columns": "".join(
-                f"{column}, " for column in extra_fields.values()
+                f"{qn(column)}, " for column in extra_fields.values()
             ),
-            "extra_fields_names": "".join(f"{name}, " for name in extra_fields),
+            "extra_fields_names": "".join(f"{qn(name)}, " for name in extra_fields),
             "extra_fields_initial": "".join(
-                f"array[T.{column}]::text[] AS {name}, "
+                f"array[T.{qn(column)}]::text[] AS {qn(name)}, "
                 for name, column in extra_fields.items()
             ),
             "extra_fields_recursive": "".join(
-                f"__tree.{name} || T.{column}, "
+                f"__tree.{qn(name)} || T.{qn(column)}, "
                 for name, column in extra_fields.items()
             ),
         }
