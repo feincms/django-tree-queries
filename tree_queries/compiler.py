@@ -83,9 +83,9 @@ class TreeCompiler(SQLCompiler):
     ) AS (
         SELECT
             {tree_fields_initial}
-            0 AS tree_depth,
-            array[T.{pk}] AS tree_path,
-            array[T.rank_order] AS tree_ordering,
+            0,
+            array[T.{pk}],
+            array[T.rank_order],
             T."{pk}"
         FROM __rank_table T
         WHERE T."{parent}" IS NULL
@@ -94,7 +94,7 @@ class TreeCompiler(SQLCompiler):
 
         SELECT
             {tree_fields_recursive}
-            __tree.tree_depth + 1 AS tree_depth,
+            __tree.tree_depth + 1,
             __tree.tree_path || T.{pk},
             __tree.tree_ordering || T.rank_order,
             T."{pk}"
@@ -139,9 +139,9 @@ class TreeCompiler(SQLCompiler):
     __tree({tree_fields_names} tree_depth, tree_path, tree_ordering, tree_pk) AS (
         SELECT
             {tree_fields_initial}
-            0 tree_depth,
-            printf("{sep}%%s{sep}", {pk}) tree_path,
-            printf("{sep}%%020s{sep}", T.rank_order) tree_ordering,
+            0,
+            printf("{sep}%%s{sep}", {pk}),
+            printf("{sep}%%020s{sep}", T.rank_order),
             T."{pk}" tree_pk
         FROM __rank_table T
         WHERE T."{parent}" IS NULL
@@ -257,11 +257,11 @@ class TreeCompiler(SQLCompiler):
 
         if self.connection.vendor == "postgresql":
             cte = self.CTE_POSTGRESQL
-            cte_initial = "array[T.{column}]::text[] AS {name}, "
+            cte_initial = "array[T.{column}]::text[], "
             cte_recursive = "__tree.{name} || T.{column}::text, "
         elif self.connection.vendor == "sqlite":
             cte = self.CTE_SQLITE
-            cte_initial = 'printf("{sep}%%s{sep}", {column}) {name}, '
+            cte_initial = 'printf("{sep}%%s{sep}", {column}), '
             cte_recursive = '__tree.{name} || printf("%%s{sep}", T.{column}), '
         elif self.connection.vendor == "mysql":
             cte = self.CTE_MYSQL
