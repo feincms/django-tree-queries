@@ -27,6 +27,7 @@ class TreeQuerySet(models.QuerySet):
         """
         if tree_fields:
             self.query.__class__ = TreeQuery
+            self.query._setup_query()
         else:
             self.query.__class__ = Query
         return self
@@ -45,7 +46,36 @@ class TreeQuerySet(models.QuerySet):
         to order tree siblings by those model fields
         """
         self.query.__class__ = TreeQuery
+        self.query._setup_query()
         self.query.sibling_order = order_by
+        return self
+
+    def tree_filter(self, *args, **kwargs):
+        """
+        Adds a filter to the TreeQuery rank_table_query
+
+        Takes the same arguements as a Django QuerySet .filter()
+        """
+        self.query.__class__ = TreeQuery
+        self.query._setup_query()
+        self.query.rank_table_query = (
+            self.query.rank_table_query
+            .filter(*args, **kwargs)
+        )
+        return self
+    
+    def tree_exclude(self, *args, **kwargs):
+        """
+        Adds a filter to the TreeQuery rank_table_query
+
+        Takes the same arguements as a Django QuerySet .exclude()
+        """
+        self.query.__class__ = TreeQuery
+        self.query._setup_query()
+        self.query.rank_table_query = (
+            self.query.rank_table_query
+            .exclude(*args, **kwargs)
+        )
         return self
 
     def as_manager(cls, *, with_tree_fields=False):  # noqa: N805
