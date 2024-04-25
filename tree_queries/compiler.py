@@ -1,9 +1,9 @@
+import django
 from django.db import connections
-from django.db.models import Value, F, Window, Expression, QuerySet
+from django.db.models import Expression, F, QuerySet, Value, Window
 from django.db.models.functions import RowNumber
 from django.db.models.sql.compiler import SQLCompiler
 from django.db.models.sql.query import Query
-import django
 
 
 SEPARATOR = "\x1f"
@@ -14,7 +14,6 @@ def _find_tree_model(cls):
 
 
 class TreeQuery(Query):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._setup_query()
@@ -32,20 +31,13 @@ class TreeQuery(Query):
         if not hasattr(self, "sibling_order"):
             # Add an attribute to control the ordering of siblings within trees
             opts = _find_tree_model(self.model)._meta
-            self.sibling_order = (
-                opts.ordering
-                if opts.ordering
-                else opts.pk.attname
-            )
+            self.sibling_order = opts.ordering if opts.ordering else opts.pk.attname
 
         # Only add the rank_table_query attribute if the query doesn't already have one to preserve cloning behavior
         if not hasattr(self, "rank_table_query"):
             # Create a default QuerySet for the rank_table to use
             # so we can avoid recursion
-            self.rank_table_query = QuerySet(
-                model=_find_tree_model(self.model)
-            )
-
+            self.rank_table_query = QuerySet(model=_find_tree_model(self.model))
 
     def get_compiler(self, using=None, connection=None, **kwargs):
         # Copied from django/db/models/sql/query.py
@@ -64,6 +56,7 @@ class TreeQuery(Query):
 
     def get_rank_table_query(self):
         return self.rank_table_query
+
 
 class TreeCompiler(SQLCompiler):
     CTE_POSTGRESQL = """
@@ -164,7 +157,7 @@ class TreeCompiler(SQLCompiler):
             raise ValueError(
                 "Sibling order must be a string or a list or tuple of strings."
             )
-        
+
         # Convert strings to expressions. This is to maintain backwards compatibility
         # with Django versions < 4.1
         if django.VERSION < (4, 1):
@@ -183,20 +176,19 @@ class TreeCompiler(SQLCompiler):
         rank_table_query = self.query.get_rank_table_query()
 
         rank_table_query = (
-            rank_table_query
-            .order_by() # Ensure there is no ORDER BY at the end of the SQL 
+            rank_table_query.order_by()  # Ensure there is no ORDER BY at the end of the SQL
             # Values allows us to both limit and specify the order of
             # the columns selected so that they match the CTE
             .values(
-                "pk", 
-                "parent", 
+                "pk",
+                "parent",
                 rank_order=Window(
                     expression=RowNumber(),
                     order_by=order_fields,
                 ),
             )
         )
-        
+
         rank_table_sql, rank_table_params = rank_table_query.query.sql_with_params()
 
         return rank_table_sql, rank_table_params
@@ -298,7 +290,10 @@ class TreeCompiler(SQLCompiler):
 
         # Pass any additional rank table sql paramaters so that the db backend can handle them.
         # This only works because we know that the CTE is at the start of the query.
-        return ("".join([explain, cte.format(**params), sql_0]), rank_table_params + sql_1)
+        return (
+            "".join([explain, cte.format(**params), sql_0]),
+            rank_table_params + sql_1,
+        )
 
     def get_converters(self, expressions):
         converters = super().get_converters(expressions)

@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import connections, models
@@ -24,8 +26,6 @@ from testapp.models import (
 )
 from tree_queries.compiler import SEPARATOR, TreeQuery
 from tree_queries.query import pk
-
-from types import SimpleNamespace
 
 
 @override_settings(DEBUG=True)
@@ -774,7 +774,7 @@ class Test(TestCase):
         tree = self.create_tree()
         # Tree-filter should remove children if
         # the parent does not meet the filtering criteria
-        nodes = Model.objects.tree_filter(name__in=["root","1-1","2","2-1","2-2"])
+        nodes = Model.objects.tree_filter(name__in=["root", "1-1", "2", "2-1", "2-2"])
         self.assertEqual(
             list(nodes),
             [
@@ -789,7 +789,9 @@ class Test(TestCase):
         tree = self.create_tree()
         # Tree-filter should remove children if
         # the parent does not meet the filtering criteria
-        nodes = Model.objects.tree_exclude(name="2-2").tree_filter(name__in=["root","1-1","2","2-1","2-2"])
+        nodes = Model.objects.tree_exclude(name="2-2").tree_filter(
+            name__in=["root", "1-1", "2", "2-1", "2-2"]
+        )
         self.assertEqual(
             list(nodes),
             [
@@ -841,7 +843,8 @@ class Test(TestCase):
         tree = SimpleNamespace()
 
         tree.root = MultiOrderedModel.objects.create(
-            name="root", first_position=1,
+            name="root",
+            first_position=1,
         )
         tree.child1 = MultiOrderedModel.objects.create(
             parent=tree.root, first_position=0, second_position=1, name="1"
@@ -859,11 +862,9 @@ class Test(TestCase):
             parent=tree.child2, first_position=1, second_position=0, name="2-2"
         )
 
-        nodes = (
-            MultiOrderedModel.objects
-            .tree_filter(first_position__gt=0)
-            .order_siblings_by("-second_position")
-        )
+        nodes = MultiOrderedModel.objects.tree_filter(
+            first_position__gt=0
+        ).order_siblings_by("-second_position")
         self.assertEqual(
             list(nodes),
             [
@@ -874,11 +875,13 @@ class Test(TestCase):
             ],
         )
 
-    def test_tree_filter_Q_objects(self):
+    def test_tree_filter_q_objects(self):
         tree = self.create_tree()
         # Tree-filter should remove children if
         # the parent does not meet the filtering criteria
-        nodes = Model.objects.tree_filter(Q(name__in=["root","1-1","2","2-1","2-2"]))
+        nodes = Model.objects.tree_filter(
+            Q(name__in=["root", "1-1", "2", "2-1", "2-2"])
+        )
         self.assertEqual(
             list(nodes),
             [
@@ -889,7 +892,7 @@ class Test(TestCase):
             ],
         )
 
-    def test_tree_filter_Q_mix(self):
+    def test_tree_filter_q_mix(self):
         tree = SimpleNamespace()
 
         tree.root = MultiOrderedModel.objects.create(
@@ -912,9 +915,8 @@ class Test(TestCase):
         )
         # Tree-filter should remove children if
         # the parent does not meet the filtering criteria
-        nodes = (
-            MultiOrderedModel.objects
-            .tree_filter(Q(first_position=1), second_position=2)
+        nodes = MultiOrderedModel.objects.tree_filter(
+            Q(first_position=1), second_position=2
         )
         self.assertEqual(
             list(nodes),

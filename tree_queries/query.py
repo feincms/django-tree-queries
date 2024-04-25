@@ -58,12 +58,11 @@ class TreeQuerySet(models.QuerySet):
         """
         self.query.__class__ = TreeQuery
         self.query._setup_query()
-        self.query.rank_table_query = (
-            self.query.rank_table_query
-            .filter(*args, **kwargs)
+        self.query.rank_table_query = self.query.rank_table_query.filter(
+            *args, **kwargs
         )
         return self
-    
+
     def tree_exclude(self, *args, **kwargs):
         """
         Adds a filter to the TreeQuery rank_table_query
@@ -72,9 +71,8 @@ class TreeQuerySet(models.QuerySet):
         """
         self.query.__class__ = TreeQuery
         self.query._setup_query()
-        self.query.rank_table_query = (
-            self.query.rank_table_query
-            .exclude(*args, **kwargs)
+        self.query.rank_table_query = self.query.rank_table_query.exclude(
+            *args, **kwargs
         )
         return self
 
