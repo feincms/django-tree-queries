@@ -46,6 +46,12 @@ include = ["tree_queries/"]
 path = "tree_queries/__init__.py"
 
 [tool.ruff]
+fix = true
+preview = true
+show-fixes = true
+target-version = "py38"
+
+[tool.ruff.lint]
 extend-select = [
   # pyflakes, pycodestyle
   "F", "E", "W",
@@ -80,7 +86,7 @@ extend-select = [
   # pygrep-hooks
   "PGH",
   # pylint
-  "PL",
+  "PLC", "PLE", "PLW",
   # unused noqa
   "RUF100",
 ]
@@ -90,18 +96,15 @@ extend-ignore = [
   # No line length errors
   "E501",
 ]
-fix = true
-show-fixes = true
-target-version = "py38"
 
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 combine-as-imports = true
 lines-after-imports = 2
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 15
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "*/migrat*/*" = [
   # Allow using PascalCase model names in migrations
   "N806",

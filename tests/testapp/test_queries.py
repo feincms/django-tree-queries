@@ -1,8 +1,9 @@
+import unittest
 from types import SimpleNamespace
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.db import connections, models
+from django.db import connection, connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
 from django.test import TestCase, override_settings
@@ -502,9 +503,7 @@ class Test(TestCase):
         else:
             qs = qs.annotate(
                 is_my_field=RawSQL(
-                    'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
-                        pk=pk(tree.child2_1), sep=SEPARATOR
-                    ),
+                    f'instr(__tree.tree_path, "{SEPARATOR}{pk(tree.child2_1)}{SEPARATOR}") <> 0',
                     [],
                     output_field=models.BooleanField(),
                 )
@@ -924,5 +923,23 @@ class Test(TestCase):
                 tree.root,
                 tree.child2,
                 tree.child2_2,
+            ],
+        )
+
+    @unittest.skipUnless(connection.vendor == "postgresql", "PostgreSQL tests")
+    def test_extra_fields(self):
+        self.create_tree()
+        names = [
+            obj.tree_names for obj in Model.objects.extra_fields(tree_names="name")
+        ]
+        self.assertEqual(
+            names,
+            [
+                ["root"],
+                ["root", "1"],
+                ["root", "1", "1-1"],
+                ["root", "2"],
+                ["root", "2", "2-1"],
+                ["root", "2", "2-2"],
             ],
         )

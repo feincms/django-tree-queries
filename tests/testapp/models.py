@@ -75,7 +75,7 @@ class AlwaysTreeQueryModel(TreeNode):
 
 
 class UUIDModel(TreeNode):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4)  # noqa: A003
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     name = models.CharField(max_length=100)
 
     def __str__(self):
@@ -136,3 +136,6 @@ class OneToOneRelatedOrder(models.Model):
         related_name="related",
     )
     order = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return ""

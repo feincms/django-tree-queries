@@ -76,7 +76,14 @@ class TreeQuerySet(models.QuerySet):
         )
         return self
 
-    def as_manager(cls, *, with_tree_fields=False):  # noqa: N805
+    def extra_fields(self, **extra_fields):
+        self.query.__class__ = TreeQuery
+        self.query._setup_query()
+        self.query.extra_fields = extra_fields
+        return self
+
+    @classmethod
+    def as_manager(cls, *, with_tree_fields=False):
         manager_class = TreeManager.from_queryset(cls)
         # Only used in deconstruct:
         manager_class._built_with_as_manager = True
@@ -87,7 +94,6 @@ class TreeQuerySet(models.QuerySet):
         return manager_class()
 
     as_manager.queryset_only = True
-    as_manager = classmethod(as_manager)
 
     def ancestors(self, of, *, include_self=False):
         """
@@ -122,10 +128,7 @@ class TreeQuerySet(models.QuerySet):
                 where=[
                     # XXX This *may* be unsafe with some primary key field types.
                     # It is certainly safe with integers.
-                    'instr(__tree.tree_path, "{sep}{pk}{sep}") <> 0'.format(
-                        pk=self.model._meta.pk.get_db_prep_value(pk(of), connection),
-                        sep=SEPARATOR,
-                    )
+                    f'instr(__tree.tree_path, "{SEPARATOR}{self.model._meta.pk.get_db_prep_value(pk(of), connection)}{SEPARATOR}") <> 0'
                 ]
             )
 
