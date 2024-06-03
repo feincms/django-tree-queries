@@ -8,9 +8,9 @@ requires = [
 name = "django-tree-queries"
 description = "Tree queries with explicit opt-in, without configurability"
 readme = "README.rst"
-license = {text = "BSD-3-Clause"}
+license = { text = "BSD-3-Clause" }
 authors = [
-    { name = "Matthias Kestenholz", email = "mk@feinheit.ch" },
+  { name = "Matthias Kestenholz", email = "mk@feinheit.ch" },
 ]
 requires-python = ">=3.8"
 classifiers = [
@@ -32,82 +32,79 @@ classifiers = [
 dynamic = [
   "version",
 ]
-[project.optional-dependencies]
-tests = [
+optional-dependencies.tests = [
   "coverage",
 ]
-[project.urls]
-Homepage = "https://github.com/matthiask/django-tree-queries/"
+urls.Homepage = "https://github.com/matthiask/django-tree-queries/"
 
 [tool.hatch.build]
-include = ["tree_queries/"]
+include = [
+  "tree_queries/",
+]
 
 [tool.hatch.version]
 path = "tree_queries/__init__.py"
 
 [tool.ruff]
-fix = true
-preview = true
-show-fixes = true
 target-version = "py38"
 
-[tool.ruff.lint]
-extend-select = [
-  # pyflakes, pycodestyle
-  "F", "E", "W",
-  # mmcabe
-  "C90",
-  # isort
-  "I",
-  # pep8-naming
-  "N",
-  # pyupgrade
-  "UP",
-  # flake8-2020
-  "YTT",
-  # flake8-boolean-trap
-  "FBT",
-  # flake8-bugbear
-  "B",
+preview = true
+fix = true
+show-fixes = true
+lint.extend-select = [
   # flake8-builtins
   "A",
+  # flake8-bugbear
+  "B",
   # flake8-comprehensions
   "C4",
+  # mmcabe
+  "C90",
   # flake8-django
   "DJ",
+  "E",
+  # pyflakes, pycodestyle
+  "F",
+  # flake8-boolean-trap
+  "FBT",
   # flake8-logging-format
   "G",
-  # flake8-pie
-  "PIE",
-  # flake8-simplify
-  "SIM",
+  # isort
+  "I",
   # flake8-gettext
   "INT",
+  # pep8-naming
+  "N",
   # pygrep-hooks
   "PGH",
+  # flake8-pie
+  "PIE",
   # pylint
-  "PLC", "PLE", "PLW",
+  "PLC",
+  "PLE",
+  "PLW",
   # unused noqa
   "RUF100",
+  # flake8-simplify
+  "SIM",
+  # pyupgrade
+  "UP",
+  "W",
+  # flake8-2020
+  "YTT",
 ]
-extend-ignore = [
+lint.extend-ignore = [
   # Allow zip() without strict=
   "B905",
   # No line length errors
   "E501",
 ]
-
-[tool.ruff.lint.isort]
-combine-as-imports = true
-lines-after-imports = 2
-
-[tool.ruff.lint.mccabe]
-max-complexity = 15
-
-[tool.ruff.lint.per-file-ignores]
-"*/migrat*/*" = [
+lint.per-file-ignores."*/migrat*/*" = [
   # Allow using PascalCase model names in migrations
   "N806",
   # Ignore the fact that migration files are invalid module names
   "N999",
 ]
+lint.isort.combine-as-imports = true
+lint.isort.lines-after-imports = 2
+lint.mccabe.max-complexity = 15
