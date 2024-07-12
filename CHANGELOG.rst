@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Added Django 5.1b1 to the testsuite.
+
+
 0.19 (2024-04-25)
 ~~~~~~~~~~~~~~~~~
 
