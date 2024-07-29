@@ -19,7 +19,7 @@ class Model(TreeNode):
 
 
 class UnorderedModel(TreeNode):
-    pass
+    name = models.CharField(max_length=100)
 
 
 class StringOrderedModel(TreeNode):

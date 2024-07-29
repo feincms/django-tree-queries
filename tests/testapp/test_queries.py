@@ -224,6 +224,21 @@ class Test(TestCase):
     def test_unordered(self):
         self.assertEqual(list(UnorderedModel.objects.all()), [])
 
+        u2 = UnorderedModel.objects.create(name="u2")
+        u1 = UnorderedModel.objects.create(name="u1")
+        u0 = UnorderedModel.objects.create(name="u0")
+
+        u1.parent = u0
+        u1.save()
+        u2.parent = u0
+        u2.save()
+
+        # Siblings are ordered by primary key (in order of creation)
+        self.assertSequenceEqual(
+            [obj.name for obj in UnorderedModel.objects.with_tree_fields()],
+            ["u0", "u2", "u1"],
+        )
+
     def test_revert(self):
         tree = self.create_tree()
         obj = (
