@@ -47,7 +47,7 @@ class TreeQuerySet(models.QuerySet):
         """
         self.query.__class__ = TreeQuery
         self.query._setup_query()
-        self.query.sibling_order = order_by
+        self.query.sibling_order = order_by or ["position"]
         return self
 
     def tree_filter(self, *args, **kwargs):
