@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.db import connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
+from django.db.utils import OperationalError
 from django.test import TestCase, override_settings
 
 from testapp.models import (
@@ -157,6 +158,54 @@ class Test(TestCase):
             {"order__sum": 18},
             # TODO Sum("tree_depth") does not work because the field is not
             # known yet.
+        )
+
+    def test_update_descendants(self):
+        """UpdateQuery does not work with tree queries"""
+        tree = self.create_tree()
+        with self.assertRaises(OperationalError) as cm:
+            tree.root.descendants().update(name="test")
+        self.assertIn("__tree.tree_path", str(cm.exception))
+
+    def test_update_descendants_with_filter(self):
+        """Updating works when using a filter"""
+        tree = self.create_tree()
+        Model.objects.filter(pk__in=tree.child2.descendants()).update(name="test")
+        self.assertEqual(
+            [node.name for node in Model.objects.with_tree_fields()],
+            [
+                "root",
+                "1",
+                "1-1",
+                "2",
+                "test",
+                "test",
+            ],
+        )
+
+    def test_delete_descendants(self):
+        """DeleteQuery works with tree queries"""
+        tree = self.create_tree()
+        tree.child2.descendants(include_self=True).delete()
+
+        self.assertEqual(
+            list(Model.objects.with_tree_fields()),
+            [
+                tree.root,
+                tree.child1,
+                tree.child1_1,
+                # tree.child2,
+                # tree.child2_1,
+                # tree.child2_2,
+            ],
+        )
+
+    def test_aggregate_descendants(self):
+        """AggregateQuery works with tree queries"""
+        tree = self.create_tree()
+        self.assertEqual(
+            tree.root.descendants(include_self=True).aggregate(Sum("pk"))["pk__sum"],
+            sum(node.pk for node in Model.objects.all()),
         )
 
     def test_values(self):
