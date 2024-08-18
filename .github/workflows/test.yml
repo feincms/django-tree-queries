@@ -29,20 +29,20 @@ jobs:
           - 3306:3306
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Get pip cache dir
         id: pip-cache
         run: |
-          echo "::set-output name=dir::$(pip cache dir)"
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/tox.ini') }}
@@ -87,20 +87,20 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Get pip cache dir
         id: pip-cache
         run: |
-          echo "::set-output name=dir::$(pip cache dir)"
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/tox.ini') }}
@@ -128,20 +128,20 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Get pip cache dir
         id: pip-cache
         run: |
-          echo "::set-output name=dir::$(pip cache dir)"
+          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
 
       - name: Cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
           key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/tox.ini') }}
