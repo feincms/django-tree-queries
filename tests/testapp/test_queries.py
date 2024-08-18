@@ -5,7 +5,6 @@ from django.core.exceptions import ValidationError
 from django.db import connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
-from django.db.utils import OperationalError
 from django.test import TestCase, override_settings
 
 from testapp.models import (
@@ -163,9 +162,12 @@ class Test(TestCase):
     def test_update_descendants(self):
         """UpdateQuery does not work with tree queries"""
         tree = self.create_tree()
-        with self.assertRaises(OperationalError) as cm:
+        # OperationalError would probably be appropriate, but the psycopg2
+        # backend raises psycopg2.errors.UndefinedTable, which isn't an
+        # OperationalError subclass.
+        with self.assertRaises(Exception) as cm:
             tree.root.descendants().update(name="test")
-        self.assertIn("__tree.tree_path", str(cm.exception))
+        self.assertIn("__tree", str(cm.exception))
 
     def test_update_descendants_with_filter(self):
         """Updating works when using a filter"""
