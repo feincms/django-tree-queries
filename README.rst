@@ -225,6 +225,6 @@ Templates
 ~~~~~~~~~
 
 django-tree-queries doesn't include any utilities to help rendering trees in
-templates. `django-tree-query-template
+templates at this time. `django-tree-query-template
 <https://github.com/triopter/django-tree-query-template>`__ exists and includes
 a version of the django-mptt ``tree_info`` filter. Feel free to check it out.
