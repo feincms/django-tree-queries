@@ -219,3 +219,12 @@ structure is visualized using dashes etc. Those fields are
 ``tree_queries.fields.TreeNodeForeignKey``,
 ``tree_queries.forms.TreeNodeChoiceField``,
 ``tree_queries.forms.TreeNodeMultipleChoiceField``.
+
+
+Templates
+~~~~~~~~~
+
+django-tree-queries doesn't include any utilities to help rendering trees in
+templates. `django-tree-query-template
+<https://github.com/triopter/django-tree-query-template>`__ exists and includes
+a version of the django-mptt ``tree_info`` filter. Feel free to check it out.
