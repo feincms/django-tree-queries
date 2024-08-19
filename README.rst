@@ -170,6 +170,21 @@ Basic usage
     # Temporarily override the ordering by siblings.
     nodes = Node.objects.order_siblings_by("id")
 
+Note that the tree queryset doesn't support all types of queries Django
+supports. For example, updating all descendants directly isn't supported:
+
+.. code-block:: python
+
+    # Doesn't work
+    node.descendants().update(is_active=False)
+
+The reason for that is that the recursive CTE isn't added to the UPDATE query
+correctly. Workarounds often include moving the tree query into a subquery:
+
+.. code-block:: python
+
+    Node.objects.filter(pk__in=node.descendants()).update(is_active=False)
+
 
 Breadth-first search
 --------------------
