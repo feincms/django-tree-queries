@@ -210,6 +210,22 @@ If you only want nodes from the top two levels:
     )
 
 
+Aggregating ancestor fields
+---------------------------
+
+It may be useful to aggregate fields from ancestor nodes, e.g. to collect parts
+of a path or something similar.
+
+.. code-block:: python
+
+    nodes = Node.objects.with_tree_fields().tree_fields(
+        tree_names="name",
+    )
+
+All nodes will now have a ``tree_names`` attribute containing a list of all
+ancestors' names, including the node itself.
+
+
 Form fields
 ~~~~~~~~~~~
 
