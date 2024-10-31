@@ -1,7 +1,7 @@
 exclude: ".yarn/|yarn.lock|\\.min\\.(css|js)$"
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: check-added-large-files
       - id: check-builtin-literals
@@ -14,16 +14,12 @@ repos:
       - id: mixed-line-ending
       - id: trailing-whitespace
   - repo: https://github.com/adamchainz/django-upgrade
-    rev: 1.20.0
+    rev: 1.22.1
     hooks:
       - id: django-upgrade
         args: [--target-version, "3.2"]
-  - repo: https://github.com/MarcoGorelli/absolufy-imports
-    rev: v0.3.1
-    hooks:
-      - id: absolufy-imports
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.6.1"
+    rev: "v0.7.1"
     hooks:
       - id: ruff
       - id: ruff-format
@@ -34,10 +30,10 @@ repos:
         args: [--list-different, --no-semi]
         exclude: "^conf/|.*\\.html$"
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: 2.2.1
+    rev: v2.5.0
     hooks:
       - id: pyproject-fmt
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.19
+    rev: v0.22
     hooks:
       - id: validate-pyproject
