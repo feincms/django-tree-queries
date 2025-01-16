@@ -4,7 +4,7 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
-- Added Django 5.1 to the testsuite.
+- Added Python 3.13, Django 5.1 and 5.2a1 to the testsuite.
 - Added tests showing that ``.descendants().update(...)`` doesn't work, but
   ``.filter(pk__in=....descendants()).update(...)`` does.
 - Added Python 3.13 to the testsuite.
