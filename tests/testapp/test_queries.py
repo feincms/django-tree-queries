@@ -978,3 +978,60 @@ class TestTreeQueries:
 
         assert len(descendants) == 2
         assert set(descendants) == set(expected_descendants)
+
+    def test_rank_table_optimization(self):
+        """Test that rank table optimization works correctly"""
+        from tree_queries.compiler import TreeCompiler, TreeQuery
+
+        # Test that simple cases can skip rank table (all databases now support it)
+        query = TreeQuery(Model)
+        compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
+        # Default should allow optimization
+        assert compiler._can_skip_rank_table()
+
+        # Descending order should prevent optimization
+        query.sibling_order = "-order"
+        assert not compiler._can_skip_rank_table()
+
+        # Multiple fields should prevent optimization
+        query.sibling_order = ["order", "name"]
+        assert not compiler._can_skip_rank_table()
+
+        # String fields should prevent optimization
+        query.sibling_order = "name"
+        assert not compiler._can_skip_rank_table()
+
+        # Test that tree filters prevent optimization
+        tree = self.create_tree()
+        filtered_qs = Model.objects.tree_filter(name="root")
+        query = filtered_qs.query
+        compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
+        assert not compiler._can_skip_rank_table()
+
+        # Test that custom tree fields prevent optimization
+        custom_fields_qs = Model.objects.tree_fields(tree_names="name")
+        query = custom_fields_qs.query
+        compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
+        assert not compiler._can_skip_rank_table()
+
+    def test_optimization_sql_differences(self):
+        """Test that the optimization produces different SQL"""
+
+        tree = self.create_tree()
+
+        # Simple query that should use optimization
+        simple_qs = Model.objects.with_tree_fields()
+        simple_sql, _ = simple_qs.query.get_compiler(using=Model.objects.db).as_sql()
+
+        # Complex query that should NOT use optimization (descending order)
+        complex_qs = Model.objects.with_tree_fields().order_siblings_by("-order")
+        complex_sql, _ = complex_qs.query.get_compiler(using=Model.objects.db).as_sql()
+
+        # The optimized query should not contain "__rank_table"
+        assert "__rank_table" not in simple_sql
+        # The complex query should contain "__rank_table"
+        assert "__rank_table" in complex_sql
+
+        # Both should contain "__tree" CTE
+        assert "__tree" in simple_sql
+        assert "__tree" in complex_sql
