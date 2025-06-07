@@ -35,6 +35,8 @@ dynamic = [
 ]
 optional-dependencies.tests = [
   "coverage",
+  "pytest",
+  "pytest-django",
 ]
 urls.Homepage = "https://github.com/matthiask/django-tree-queries/"
 
@@ -84,6 +86,8 @@ lint.extend-select = [
   "PLC",
   "PLE",
   "PLW",
+  # flake8-pytest-style
+  "PT",
   # unused noqa
   "RUF100",
   # flake8-simplify
@@ -109,3 +113,12 @@ lint.per-file-ignores."*/migrat*/*" = [
 lint.isort.combine-as-imports = true
 lint.isort.lines-after-imports = 2
 lint.mccabe.max-complexity = 15
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "testapp.settings"
+python_files = [ "tests.py", "test_*.py", "*_tests.py" ]
+testpaths = [ "tests" ]
+addopts = "-v --tb=short --strict-markers --ds=testapp.settings"
+markers = [
+  "django_db: mark test to use django database",
+]

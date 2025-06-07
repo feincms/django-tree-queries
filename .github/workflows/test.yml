@@ -45,7 +45,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/tox.ini') }}
+          key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('**/tox.ini') }}
           restore-keys: |
             ${{ matrix.python-version }}-v1-
 
@@ -103,7 +103,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/tox.ini') }}
+          key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('**/tox.ini') }}
           restore-keys: |
             ${{ matrix.python-version }}-v1-
 
@@ -144,7 +144,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/setup.cfg') }}-${{ hashFiles('**/tox.ini') }}
+          key: ${{ matrix.python-version }}-v1-${{ hashFiles('**/pyproject.toml') }}-${{ hashFiles('**/tox.ini') }}
           restore-keys: |
             ${{ matrix.python-version }}-v1-
 
