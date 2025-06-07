@@ -544,7 +544,7 @@ class TreeCompiler(SQLCompiler):
         # This only works because we know that the CTE is at the start of the query.
         return (
             "".join([explain, cte.format(**params), sql_0]),
-            tuple(list(rank_table_params) + list(sql_1)),
+            (*rank_table_params, *sql_1),
         )
 
     def get_converters(self, expressions):
