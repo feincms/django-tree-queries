@@ -240,7 +240,163 @@ structure is visualized using dashes etc. Those fields are
 Templates
 ~~~~~~~~~
 
-django-tree-queries doesn't include any utilities to help rendering trees in
-templates at this time. `django-tree-query-template
-<https://github.com/triopter/django-tree-query-template>`__ exists and includes
-a version of the django-mptt ``tree_info`` filter. Feel free to check it out.
+django-tree-queries includes template tags to help render tree structures in
+Django templates. These template tags are designed to work efficiently with
+tree querysets and respect queryset boundaries.
+
+Setup
+-----
+
+Add ``tree_queries`` to your ``INSTALLED_APPS`` setting:
+
+.. code-block:: python
+
+    INSTALLED_APPS = [
+        # ... other apps
+        'tree_queries',
+    ]
+
+Then load the template tags in your template:
+
+.. code-block:: html
+
+    {% load tree_queries %}
+
+
+tree_info filter
+----------------
+
+The ``tree_info`` filter provides detailed information about each node's
+position in the tree structure. It's useful when you need fine control over
+the tree rendering.
+
+.. code-block:: html
+
+    {% load tree_queries %}
+    <ul>
+    {% for node, structure in nodes|tree_info %}
+        {% if structure.new_level %}<ul><li>{% else %}</li><li>{% endif %}
+        {{ node.name }}
+        {% for level in structure.closed_levels %}</li></ul>{% endfor %}
+    {% endfor %}
+    </ul>
+
+The filter returns tuples of ``(node, structure_info)`` where ``structure_info``
+contains:
+
+- ``new_level``: ``True`` if this node starts a new level, ``False`` otherwise
+- ``closed_levels``: List of levels that close after this node
+- ``ancestors``: List of ancestor node representations from root to immediate parent
+
+Example showing ancestor information:
+
+.. code-block:: html
+
+    {% for node, structure in nodes|tree_info %}
+        {{ node.name }}
+        {% if structure.ancestors %}
+            (Path: {% for ancestor in structure.ancestors %}{{ ancestor }}{% if not forloop.last %} > {% endif %}{% endfor %})
+        {% endif %}
+    {% endfor %}
+
+
+recursetree tag
+---------------
+
+The ``recursetree`` tag provides recursive rendering similar to django-mptt's
+``recursetree`` tag, but optimized for django-tree-queries. It only considers
+nodes within the provided queryset and doesn't make additional database queries.
+
+Basic usage:
+
+.. code-block:: html
+
+    {% load tree_queries %}
+    <ul>
+    {% recursetree nodes %}
+        <li>
+            {{ node.name }}
+            {% if children %}
+                <ul>{{ children }}</ul>
+            {% endif %}
+        </li>
+    {% endrecursetree %}
+    </ul>
+
+The ``recursetree`` tag provides these context variables within the template:
+
+- ``node``: The current tree node
+- ``children``: Rendered HTML of child nodes (from the queryset)
+- ``is_leaf``: ``True`` if the node has no children in the queryset
+
+Using ``is_leaf`` for conditional rendering:
+
+.. code-block:: html
+
+    {% recursetree nodes %}
+        <div class="{% if is_leaf %}leaf-node{% else %}branch-node{% endif %}">
+            <span class="node-name">{{ node.name }}</span>
+            {% if children %}
+                <div class="children">{{ children }}</div>
+            {% elif is_leaf %}
+                <span class="leaf-indicator">🍃</span>
+            {% endif %}
+        </div>
+    {% endrecursetree %}
+
+Advanced example with depth information:
+
+.. code-block:: html
+
+    {% recursetree nodes %}
+        <div class="node depth-{{ node.tree_depth }}"
+             data-id="{{ node.pk }}"
+             data-has-children="{{ children|yesno:'true,false' }}">
+            <h{{ node.tree_depth|add:1 }}>{{ node.name }}</h{{ node.tree_depth|add:1 }}>
+            {% if children %}
+                <div class="node-children">{{ children }}</div>
+            {% endif %}
+        </div>
+    {% endrecursetree %}
+
+
+Working with limited querysets
+-------------------------------
+
+Both template tags respect queryset boundaries and work efficiently with
+filtered or limited querysets:
+
+.. code-block:: python
+
+    # Only nodes up to depth 2
+    limited_nodes = Node.objects.with_tree_fields().extra(
+        where=["__tree.tree_depth <= %s"], params=[2]
+    )
+
+    # Only specific branches
+    branch_nodes = Node.objects.descendants(some_node, include_self=True)
+
+When using these limited querysets:
+
+- ``recursetree`` will only render nodes from the queryset
+- ``is_leaf`` reflects whether nodes have children *in the queryset*, not in the full tree
+- No additional database queries are made
+- Nodes whose parents aren't in the queryset are treated as root nodes
+
+Example with depth-limited queryset:
+
+.. code-block:: html
+
+    <!-- Template -->
+    {% recursetree limited_nodes %}
+        <li>
+            {{ node.name }}
+            {% if is_leaf %}
+                <small>(leaf in limited view)</small>
+            {% endif %}
+            {{ children }}
+        </li>
+    {% endrecursetree %}
+
+This is particularly useful for creating expandable tree interfaces or
+rendering only portions of large trees for performance.

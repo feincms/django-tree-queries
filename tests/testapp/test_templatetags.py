@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from django import template
 from django.template import Context, Template
 
 from testapp.models import Model
@@ -121,8 +122,8 @@ class TestTemplateTags:
 
         result = list(tree_info(items))
 
-        # Should return same as tree_item_iterator without features
-        expected = list(tree_item_iterator(items))
+        # Should return same as tree_item_iterator with ancestors=True
+        expected = list(tree_item_iterator(items, ancestors=True))
         assert len(result) == len(expected)
 
         # Check that structure matches
@@ -130,31 +131,26 @@ class TestTemplateTags:
             assert item1 == item2
             assert struct1["new_level"] == struct2["new_level"]
             assert struct1["closed_levels"] == struct2["closed_levels"]
+            assert struct1["ancestors"] == struct2["ancestors"]
 
-    def test_tree_info_filter_with_ancestors(self):
-        """Test the tree_info template filter with ancestors feature"""
+    def test_tree_info_filter_always_has_ancestors(self):
+        """Test that tree_info filter always includes ancestors"""
         tree = self.create_tree()
         items = list(Model.objects.with_tree_fields())
 
-        result = list(tree_info(items, "ancestors"))
+        result = list(tree_info(items))
 
-        # Check that ancestors are included
+        # Check that ancestors are always included
         item, structure = result[2]  # child1_1
         assert item == tree.child1_1
         assert "ancestors" in structure
         assert structure["ancestors"] == [str(tree.root), str(tree.child1)]
 
-    def test_tree_info_filter_multiple_features(self):
-        """Test the tree_info template filter with multiple features"""
-        tree = self.create_tree()
-        items = list(Model.objects.with_tree_fields())
-
-        # Test with ancestors feature in a comma-separated list
-        result = list(tree_info(items, "ancestors,other"))
-
-        # Check that ancestors are included
-        item, structure = result[2]  # child1_1
+        # Check root has empty ancestors
+        item, structure = result[0]  # root
+        assert item == tree.root
         assert "ancestors" in structure
+        assert structure["ancestors"] == []
 
     def test_tree_info_in_template(self):
         """Test tree_info filter used in an actual Django template"""
@@ -186,13 +182,13 @@ class TestTemplateTags:
         assert "</li></ul>" in result
 
     def test_tree_info_with_ancestors_in_template(self):
-        """Test tree_info filter with ancestors feature in template"""
+        """Test tree_info filter with ancestors in template"""
         tree = self.create_tree()
         items = list(Model.objects.with_tree_fields())
 
         template = Template("""
         {% load tree_queries %}
-        {% for item, structure in items|tree_info:"ancestors" %}
+        {% for item, structure in items|tree_info %}
         {{ item.name }}{% if structure.ancestors %} (ancestors: {% for ancestor in structure.ancestors %}{{ ancestor }}{% if not forloop.last %}, {% endif %}{% endfor %}){% endif %}
         {% endfor %}
         """)
@@ -226,3 +222,463 @@ class TestTemplateTags:
         assert item == root
         assert structure["new_level"] is True
         assert structure["closed_levels"] == [0]
+
+    def test_recursetree_basic(self):
+        """Test basic recursetree functionality"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        <ul>
+        {% recursetree items %}
+            <li>
+                {{ node.name }}
+                {% if children %}
+                    <ul>{{ children }}</ul>
+                {% endif %}
+            </li>
+        {% endrecursetree %}
+        </ul>
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Check that all nodes are rendered
+        assert "root" in result
+        assert "1" in result
+        assert "1-1" in result
+        assert "2" in result
+        assert "2-1" in result
+        assert "2-2" in result
+
+        # Check nested structure
+        assert "<ul>" in result
+        assert "<li>" in result
+        assert "</li>" in result
+        assert "</ul>" in result
+
+    def test_recursetree_with_depth_info(self):
+        """Test recursetree with node depth information"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div class="depth-{{ node.tree_depth }}">
+                {{ node.name }}
+                {{ children }}
+            </div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Check depth classes are applied correctly
+        assert 'class="depth-0"' in result  # root
+        assert 'class="depth-1"' in result  # child1, child2
+        assert 'class="depth-2"' in result  # child1_1, child2_1, child2_2
+
+    def test_recursetree_empty_queryset(self):
+        """Test recursetree with empty queryset"""
+        template = Template("""
+        {% load tree_queries %}
+        <ul>
+        {% recursetree items %}
+            <li>{{ node.name }}</li>
+        {% endrecursetree %}
+        </ul>
+        """)
+
+        context = Context({"items": Model.objects.none()})
+        result = template.render(context)
+
+        # Should render just the outer ul
+        assert "<ul>" in result
+        assert "</ul>" in result
+        assert "<li>" not in result
+
+    def test_recursetree_single_root(self):
+        """Test recursetree with single root node"""
+        root = Model.objects.create(name="lone-root")
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <span>{{ node.name }}</span>{{ children }}
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        assert "lone-root" in result
+        assert "<span>" in result
+
+    def test_recursetree_without_tree_fields(self):
+        """Test recursetree with queryset that doesn't have tree fields"""
+        tree = self.create_tree()
+        # Use regular queryset without tree fields
+        items = Model.objects.all()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div>{{ node.name }}{{ children }}</div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Should still render root node (the one with parent_id=None)
+        assert "root" in result
+
+    def test_recursetree_conditional_children(self):
+        """Test recursetree with conditional children rendering"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <li>
+                {{ node.name }}
+                {% if children %}
+                    <ul class="has-children">{{ children }}</ul>
+                {% else %}
+                    <span class="leaf-node"></span>
+                {% endif %}
+            </li>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Check that leaf nodes get the leaf class
+        assert 'class="leaf-node"' in result
+        # Check that parent nodes get the has-children class
+        assert 'class="has-children"' in result
+
+    def test_recursetree_complex_template(self):
+        """Test recursetree with more complex template logic"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div data-id="{{ node.pk }}" data-depth="{{ node.tree_depth }}">
+                <h{{ node.tree_depth|add:1 }}>{{ node.name }}</h{{ node.tree_depth|add:1 }}>
+                {% if children %}
+                    <div class="children-container">
+                        {{ children }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Check data attributes are present
+        assert "data-id=" in result
+        assert "data-depth=" in result
+        # Check heading levels (h1 for root, h2 for level 1, etc.)
+        assert "<h1>" in result  # root
+        assert "<h2>" in result  # children
+        assert "<h3>" in result  # grandchildren
+
+    def test_recursetree_syntax_error(self):
+        """Test that recursetree raises proper syntax error for invalid usage"""
+        with pytest.raises(template.TemplateSyntaxError) as excinfo:
+            Template("""
+            {% load tree_queries %}
+            {% recursetree %}
+            {% endrecursetree %}
+            """)
+
+        assert "tag requires a queryset" in str(excinfo.value)
+
+        with pytest.raises(template.TemplateSyntaxError) as excinfo:
+            Template("""
+            {% load tree_queries %}
+            {% recursetree items extra_arg %}
+            {% endrecursetree %}
+            """)
+
+        assert "tag requires a queryset" in str(excinfo.value)
+
+    def test_recursetree_limited_queryset_depth(self):
+        """Test recursetree with queryset limited to specific depth"""
+        tree = self.create_tree()
+        # Only get nodes up to depth 1 (root and first level children)
+        items = Model.objects.with_tree_fields().extra(
+            where=["__tree.tree_depth <= %s"], params=[1]
+        )
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <li data-depth="{{ node.tree_depth }}">
+                {{ node.name }}
+                {% if children %}
+                    <ul>{{ children }}</ul>
+                {% endif %}
+            </li>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Should include root, child1, child2 but NOT child1_1, child2_1, child2_2
+        assert "root" in result
+        assert "1" in result  # child1
+        assert "2" in result  # child2
+        assert "1-1" not in result  # should not be rendered
+        assert "2-1" not in result  # should not be rendered
+        assert "2-2" not in result  # should not be rendered
+
+        # Check depth attributes
+        assert 'data-depth="0"' in result  # root
+        assert 'data-depth="1"' in result  # children
+        assert 'data-depth="2"' not in result  # grandchildren excluded
+
+    def test_recursetree_filtered_by_name(self):
+        """Test recursetree with queryset filtered by specific criteria"""
+        tree = self.create_tree()
+        # Only get nodes with specific names (partial tree)
+        items = Model.objects.with_tree_fields().filter(
+            name__in=["root", "2", "2-1", "1"]  # Excludes "1-1" and "2-2"
+        )
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <span class="node">{{ node.name }}</span>{{ children }}
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Should include filtered nodes
+        assert "root" in result
+        assert ">1<" in result  # child1
+        assert ">2<" in result  # child2
+        assert "2-1" in result  # child2_1
+        # Should NOT include excluded nodes
+        assert "1-1" not in result
+        assert "2-2" not in result
+
+    def test_recursetree_subtree_only(self):
+        """Test recursetree with queryset containing only a subtree"""
+        tree = self.create_tree()
+        # Only get child2 and its descendants (excludes root, child1, child1_1)
+        items = Model.objects.descendants(tree.child2, include_self=True)
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div>{{ node.name }}{{ children }}</div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Should include only child2 and its descendants
+        assert "2" in result  # child2 (root of subtree)
+        assert "2-1" in result
+        assert "2-2" in result
+        # Should NOT include nodes outside the subtree
+        assert "root" not in result
+        assert 'data-name="1"' not in result  # child1
+        assert "1-1" not in result
+
+    def test_recursetree_orphaned_nodes(self):
+        """Test recursetree with queryset that has orphaned nodes (parent not in queryset)"""
+        tree = self.create_tree()
+        # Get only leaf nodes (their parents are not included)
+        items = Model.objects.with_tree_fields().filter(name__in=["1-1", "2-1", "2-2"])
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <li>{{ node.name }}{{ children }}</li>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # All nodes should be treated as roots since their parents aren't in queryset
+        assert "1-1" in result
+        assert "2-1" in result
+        assert "2-2" in result
+        # Should render three separate root nodes
+        assert result.count("<li>") == 3
+
+    def test_recursetree_mixed_levels(self):
+        """Test recursetree with queryset containing nodes from different levels"""
+        tree = self.create_tree()
+        # Mix of root, some children, and some grandchildren
+        items = Model.objects.with_tree_fields().filter(
+            name__in=["root", "1-1", "2", "2-2"]  # Skip child1 and child2_1
+        )
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div data-name="{{ node.name }}">
+                {{ node.name }}
+                {% if children %}[{{ children }}]{% endif %}
+            </div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # root should be a root with child2 as its child
+        assert 'data-name="root"' in result
+        assert 'data-name="2"' in result
+        # 1-1 should be orphaned (parent "1" not in queryset)
+        assert 'data-name="1-1"' in result
+        # 2-2 should be child of 2
+        assert 'data-name="2-2"' in result
+        # Check nesting - root should contain 2, and 2 should contain 2-2
+        assert "root" in result and "[" in result  # root has children
+        assert "]" in result  # 2 has children (contains closing bracket)
+
+    def test_recursetree_no_database_queries_for_children(self):
+        """Test that recursetree doesn't make additional database queries for children"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div>{{ node.name }}{{ children }}</div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+
+        # Force evaluation of queryset to count queries
+        list(items)
+
+        # Count queries during template rendering
+        from django.test import TestCase
+
+        tc = TestCase()
+        with tc.assertNumQueries(0):  # Should not make any additional queries
+            result = template.render(context)
+
+        # Verify the result still contains all expected nodes
+        assert "root" in result
+        assert "1" in result
+        assert "1-1" in result
+        assert "2" in result
+        assert "2-1" in result
+        assert "2-2" in result
+
+    def test_recursetree_is_leaf_context_variable(self):
+        """Test that is_leaf context variable is properly set"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div data-name="{{ node.name }}" data-is-leaf="{{ is_leaf }}">
+                {{ node.name }}
+                {% if is_leaf %}[LEAF]{% endif %}
+                {{ children }}
+            </div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Check that leaf nodes are marked as such
+        assert 'data-name="1-1" data-is-leaf="True"' in result  # child1_1 is leaf
+        assert 'data-name="2-1" data-is-leaf="True"' in result  # child2_1 is leaf
+        assert 'data-name="2-2" data-is-leaf="True"' in result  # child2_2 is leaf
+
+        # Check that non-leaf nodes are marked as such
+        assert 'data-name="root" data-is-leaf="False"' in result  # root has children
+        assert 'data-name="1" data-is-leaf="False"' in result  # child1 has children
+        assert 'data-name="2" data-is-leaf="False"' in result  # child2 has children
+
+        # Check that [LEAF] appears for leaf nodes
+        assert "[LEAF]" in result  # Should appear for leaf nodes
+        assert (
+            result.count("[LEAF]") == 3
+        )  # Should appear exactly 3 times (for 1-1, 2-1, 2-2)
+
+        # Check that [LEAF] doesn't appear for non-leaf nodes
+        assert "root[LEAF]" not in result
+        assert "1[LEAF]" not in result  # This might match "1-1[LEAF]", so be specific
+        assert ">2[LEAF]" not in result
+
+    def test_recursetree_is_leaf_with_limited_queryset(self):
+        """Test is_leaf behavior with limited queryset"""
+        tree = self.create_tree()
+        # Only get nodes up to depth 1 - so child1 and child2 appear as leaves
+        items = Model.objects.with_tree_fields().extra(
+            where=["__tree.tree_depth <= %s"], params=[1]
+        )
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <span data-node="{{ node.name }}">
+                {% if is_leaf %}LEAF:{{ node.name }}{% else %}BRANCH:{{ node.name }}{% endif %}
+                {{ children }}
+            </span>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # In this limited queryset, child1 and child2 should appear as leaves
+        # even though they have children in the full tree
+        assert "LEAF:1" in result  # child1 appears as leaf (no children in queryset)
+        assert "LEAF:2" in result  # child2 appears as leaf (no children in queryset)
+        assert "BRANCH:root" in result  # root has children (child1, child2) in queryset
+
+        # These shouldn't appear since they're not in the queryset
+        assert "1-1" not in result
+        assert "2-1" not in result
+        assert "2-2" not in result
+
+    def test_recursetree_is_leaf_orphaned_nodes(self):
+        """Test is_leaf with orphaned nodes (parent not in queryset)"""
+        tree = self.create_tree()
+        # Get only leaf nodes - they should all be treated as leaf nodes
+        items = Model.objects.with_tree_fields().filter(name__in=["1-1", "2-1", "2-2"])
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <li data-leaf="{{ is_leaf }}">{{ node.name }}</li>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # All nodes should be leaves since they have no children in the queryset
+        assert 'data-leaf="True"' in result
+        assert 'data-leaf="False"' not in result
+        assert result.count('data-leaf="True"') == 3  # All three nodes are leaves
