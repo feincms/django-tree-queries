@@ -29,7 +29,7 @@ INSTALLED_APPS = [
     # "django.contrib.staticfiles",
     # "django.contrib.messages",
     "testapp",
-    # "tree_queries",
+    "tree_queries",
 ]
 
 USE_TZ = True
