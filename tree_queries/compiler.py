@@ -288,7 +288,7 @@ class TreeCompiler(SQLCompiler):
                 # Check if it's a valid field on the model
                 try:
                     model._meta.get_field(column)
-                except:
+                except FieldDoesNotExist:
                     return False
 
         # Check for complex ordering
