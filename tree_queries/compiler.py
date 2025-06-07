@@ -184,13 +184,13 @@ class TreeCompiler(SQLCompiler):
     # Optimized CTEs without rank table for simple cases
     CTE_POSTGRESQL_SIMPLE = """
     WITH RECURSIVE __tree (
-        "tree_depth",
+        {tree_fields_names}"tree_depth",
         "tree_path",
         "tree_ordering",
         "tree_pk"
     ) AS (
         SELECT
-            0,
+            {tree_fields_initial}0,
             array[T.{pk}],
             array[T."{order_field}"],
             T.{pk}
@@ -200,7 +200,7 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
-            __tree.tree_depth + 1,
+            {tree_fields_recursive}__tree.tree_depth + 1,
             __tree.tree_path || T.{pk},
             __tree.tree_ordering || T."{order_field}",
             T.{pk}
@@ -211,13 +211,13 @@ class TreeCompiler(SQLCompiler):
 
     CTE_MYSQL_SIMPLE = """
     WITH RECURSIVE __tree(
-        tree_depth,
+        {tree_fields_names}tree_depth,
         tree_path,
         tree_ordering,
         tree_pk
     ) AS (
         SELECT
-            0,
+            {tree_fields_initial}0,
             CAST(CONCAT("{sep}", T.{pk}, "{sep}") AS char(1000)),
             CAST(CONCAT("{sep}", LPAD(CONCAT(T.`{order_field}`, "{sep}"), 20, "0")) AS char(1000)),
             T.{pk}
@@ -227,7 +227,7 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
-            __tree.tree_depth + 1,
+            {tree_fields_recursive}__tree.tree_depth + 1,
             CONCAT(__tree.tree_path, T.{pk}, "{sep}"),
             CONCAT(__tree.tree_ordering, LPAD(CONCAT(T.`{order_field}`, "{sep}"), 20, "0")),
             T.{pk}
@@ -238,13 +238,13 @@ class TreeCompiler(SQLCompiler):
 
     CTE_SQLITE_SIMPLE = """
     WITH RECURSIVE __tree(
-        tree_depth,
+        {tree_fields_names}tree_depth,
         tree_path,
         tree_ordering,
         tree_pk
     ) AS (
         SELECT
-            0,
+            {tree_fields_initial}0,
             "{sep}" || T."{pk}" || "{sep}",
             "{sep}" || printf("%%020s", T."{order_field}") || "{sep}",
             T."{pk}"
@@ -254,7 +254,7 @@ class TreeCompiler(SQLCompiler):
         UNION ALL
 
         SELECT
-            __tree.tree_depth + 1,
+            {tree_fields_recursive}__tree.tree_depth + 1,
             __tree.tree_path || T."{pk}" || "{sep}",
             __tree.tree_ordering || printf("%%020s", T."{order_field}") || "{sep}",
             T."{pk}"
@@ -277,9 +277,19 @@ class TreeCompiler(SQLCompiler):
         if str(self.query.get_rank_table_query().query) != str(original_query.query):
             return False
 
-        # Check if custom tree fields are specified
-        if self.query.get_tree_fields():
-            return False
+        # Check if custom tree fields are simple column references
+        tree_fields = self.query.get_tree_fields()
+        if tree_fields:
+            model = _find_tree_model(self.query.model)
+            for name, column in tree_fields.items():
+                # Only allow simple column names (no complex expressions)
+                if not isinstance(column, str):
+                    return False
+                # Check if it's a valid field on the model
+                try:
+                    model._meta.get_field(column)
+                except:
+                    return False
 
         # Check for complex ordering
         sibling_order = self.query.get_sibling_order()
@@ -431,43 +441,66 @@ class TreeCompiler(SQLCompiler):
             params["order_field"] = order_field
             rank_table_params = []
 
+        # Set database-specific CTE template and column reference format
         if self.connection.vendor == "postgresql":
             cte = (
                 self.CTE_POSTGRESQL_SIMPLE
                 if not use_rank_table
                 else self.CTE_POSTGRESQL
             )
-            cte_initial = "array[T.{column}]::text[], "
-            cte_recursive = "__tree.{name} || T.{column}::text, "
+            cte_initial = "array[{column_ref}]::text[], "
+            cte_recursive = "__tree.{name} || {column_ref}::text, "
         elif self.connection.vendor == "sqlite":
             cte = self.CTE_SQLITE_SIMPLE if not use_rank_table else self.CTE_SQLITE
-            cte_initial = 'printf("{sep}%%s{sep}", {column}), '
-            cte_recursive = '__tree.{name} || printf("%%s{sep}", T.{column}), '
+            if use_rank_table:
+                cte_initial = 'printf("{sep}%%s{sep}", {column_ref}), '
+                cte_recursive = '__tree.{name} || printf("%%s{sep}", {column_ref}), '
+            else:
+                # Use concatenation for simple CTE to avoid parameter issues
+                cte_initial = '"{sep}" || {column_ref} || "{sep}", '
+                cte_recursive = '__tree.{name} || {column_ref} || "{sep}", '
         elif self.connection.vendor == "mysql":
             cte = self.CTE_MYSQL_SIMPLE if not use_rank_table else self.CTE_MYSQL
-            cte_initial = 'CAST(CONCAT("{sep}", {column}, "{sep}") AS char(1000)), '
-            cte_recursive = 'CONCAT(__tree.{name}, T2.{column}, "{sep}"), '
+            cte_initial = 'CAST(CONCAT("{sep}", {column_ref}, "{sep}") AS char(1000)), '
+            cte_recursive = 'CONCAT(__tree.{name}, {column_ref}, "{sep}"), '
 
         tree_fields = self.query.get_tree_fields()
+        qn = self.connection.ops.quote_name
+
+        # Generate tree field parameters using unified templates
+        # Set column reference format based on CTE type
         if use_rank_table:
-            # Only add tree_fields params when using the complex CTE
-            qn = self.connection.ops.quote_name
+            # Complex CTE uses rank table references
+            column_ref_format = "{column}"
             params.update({
                 "tree_fields_columns": "".join(
                     f"{qn(column)}, " for column in tree_fields.values()
                 ),
-                "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
-                "tree_fields_initial": "".join(
-                    cte_initial.format(column=qn(column), name=qn(name), sep=SEPARATOR)
-                    for name, column in tree_fields.items()
-                ),
-                "tree_fields_recursive": "".join(
-                    cte_recursive.format(
-                        column=qn(column), name=qn(name), sep=SEPARATOR
-                    )
-                    for name, column in tree_fields.items()
-                ),
             })
+        else:
+            # Simple CTE uses direct table references
+            column_ref_format = "T.{column}"
+
+        # Generate unified tree field parameters
+        params.update({
+            "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
+            "tree_fields_initial": "".join(
+                cte_initial.format(
+                    column_ref=column_ref_format.format(column=qn(column)),
+                    name=qn(name),
+                    sep=SEPARATOR,
+                )
+                for name, column in tree_fields.items()
+            ),
+            "tree_fields_recursive": "".join(
+                cte_recursive.format(
+                    column_ref=column_ref_format.format(column=qn(column)),
+                    name=qn(name),
+                    sep=SEPARATOR,
+                )
+                for name, column in tree_fields.items()
+            ),
+        })
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
@@ -488,9 +521,8 @@ class TreeCompiler(SQLCompiler):
                 "tree_path": "__tree.tree_path",
                 "tree_ordering": "__tree.tree_ordering",
             }
-            if use_rank_table:
-                # Only add custom tree fields when using the complex CTE
-                select.update({name: f"__tree.{name}" for name in tree_fields})
+            # Add custom tree fields for both simple and complex CTEs
+            select.update({name: f"__tree.{name}" for name in tree_fields})
             self.query.add_extra(
                 # Do not add extra fields to the select statement when it is a
                 # summary query or when using .values() or .values_list()

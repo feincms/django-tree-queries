@@ -1008,11 +1008,11 @@ class TestTreeQueries:
         compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
         assert not compiler._can_skip_rank_table()
 
-        # Test that custom tree fields prevent optimization
+        # Test that simple custom tree fields now allow optimization
         custom_fields_qs = Model.objects.tree_fields(tree_names="name")
         query = custom_fields_qs.query
         compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
-        assert not compiler._can_skip_rank_table()
+        assert compiler._can_skip_rank_table()  # Now should allow optimization
 
     def test_optimization_sql_differences(self):
         """Test that the optimization produces different SQL"""
@@ -1035,3 +1035,26 @@ class TestTreeQueries:
         # Both should contain "__tree" CTE
         assert "__tree" in simple_sql
         assert "__tree" in complex_sql
+
+    def test_tree_fields_optimization(self):
+        """Test that tree fields work with the optimization"""
+        from tree_queries.compiler import TreeCompiler
+
+        tree = self.create_tree()
+
+        # Test that simple tree fields use optimization
+        qs = Model.objects.tree_fields(tree_names="name")
+        query = qs.query
+        compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
+        assert compiler._can_skip_rank_table()
+
+        # Test that the query works correctly
+        results = list(qs)
+        assert len(results) == 6
+
+        # Check that tree_names field is populated correctly
+        root = next(obj for obj in results if obj.name == "root")
+        assert root.tree_names == ["root"]
+
+        child2_2 = next(obj for obj in results if obj.name == "2-2")
+        assert child2_2.tree_names == ["root", "2", "2-2"]
