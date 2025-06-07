@@ -682,3 +682,109 @@ class TestTemplateTags:
         assert 'data-leaf="True"' in result
         assert 'data-leaf="False"' not in result
         assert result.count('data-leaf="True"') == 3  # All three nodes are leaves
+
+    def test_recursetree_cache_reuse(self):
+        """Test that recursetree cache is reused properly"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div>{{ node.name }}{{ children }}</div>
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+
+        # First render should cache the children
+        result1 = template.render(context)
+
+        # Second render should reuse the cache
+        result2 = template.render(context)
+
+        assert result1 == result2
+        assert "root" in result1
+
+    def test_recursetree_nodes_without_tree_ordering(self):
+        """Test recursetree with nodes that don't have tree_ordering attribute"""
+        from testapp.models import UnorderedModel
+
+        # Create tree without tree_ordering
+        u0 = UnorderedModel.objects.create(name="u0")
+        u1 = UnorderedModel.objects.create(name="u1", parent=u0)
+        u2 = UnorderedModel.objects.create(name="u2", parent=u0)
+
+        items = UnorderedModel.objects.with_tree_fields()
+
+        template = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <span>{{ node.name }}</span>{{ children }}
+        {% endrecursetree %}
+        """)
+
+        context = Context({"items": items})
+        result = template.render(context)
+
+        # Should render correctly even without tree_ordering
+        assert "u0" in result
+        assert "u1" in result
+        assert "u2" in result
+
+    def test_recursetree_get_children_from_cache_edge_cases(self):
+        """Test edge cases in _get_children_from_cache method"""
+        tree = self.create_tree()
+        items = Model.objects.with_tree_fields()
+
+        # Create a RecurseTreeNode instance
+        from django.template import Variable
+
+        from tree_queries.templatetags.tree_queries import RecurseTreeNode
+
+        queryset_var = Variable("items")
+        nodelist = []  # Empty nodelist for testing
+        recurse_node = RecurseTreeNode(nodelist, queryset_var)
+
+        # Test when cache is None
+        assert recurse_node._get_children_from_cache(tree.root) == []
+
+        # Test when cache exists but node not in cache
+        recurse_node._cached_children = {}
+        assert recurse_node._get_children_from_cache(tree.root) == []
+
+    def test_tree_item_iterator_edge_cases(self):
+        """Test edge cases in tree_item_iterator"""
+
+        # Test with single item that has tree_depth attribute
+        class MockNode:
+            def __init__(self, name, tree_depth=0):
+                self.name = name
+                self.tree_depth = tree_depth  # Include required attribute
+
+        mock_item = MockNode("test", tree_depth=0)
+
+        # This should work correctly with tree_depth
+        result = list(tree_item_iterator([mock_item], ancestors=True))
+        assert len(result) == 1
+
+        item, structure = result[0]
+        assert item == mock_item
+        assert structure["new_level"] is True
+        assert "ancestors" in structure
+
+    def test_previous_current_next_edge_cases(self):
+        """Test edge cases in previous_current_next function"""
+
+        # Test with generator that raises StopIteration
+        def empty_generator():
+            return
+            yield  # Never reached
+
+        result = list(previous_current_next(empty_generator()))
+        assert result == []
+
+        # Test with None items
+        result = list(previous_current_next([None, None]))
+        expected = [(None, None, None), (None, None, None)]
+        assert result == expected

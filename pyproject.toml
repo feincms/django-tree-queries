@@ -36,6 +36,7 @@ dynamic = [
 optional-dependencies.tests = [
   "coverage",
   "pytest",
+  "pytest-cov",
   "pytest-django",
 ]
 urls.Homepage = "https://github.com/matthiask/django-tree-queries/"
@@ -118,7 +119,9 @@ lint.mccabe.max-complexity = 15
 DJANGO_SETTINGS_MODULE = "testapp.settings"
 python_files = [ "tests.py", "test_*.py", "*_tests.py" ]
 testpaths = [ "tests" ]
-addopts = "-v --tb=short --strict-markers --ds=testapp.settings"
+addopts = "-v --tb=short --strict-markers --ds=testapp.settings --cov=tree_queries --cov-report=term-missing"
 markers = [
   "django_db: mark test to use django database",
+  "postgresql: mark test as PostgreSQL-specific",
+  "mysql: mark test as MySQL-specific",
 ]

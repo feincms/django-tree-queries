@@ -603,10 +603,14 @@ class TestTreeQueries:
             # tree.child2_2,
         ]
 
+    @pytest.mark.postgresql
+    @pytest.mark.skipif(
+        connections["default"].vendor != "postgresql",
+        reason="EXPLAIN test only meaningful for PostgreSQL",
+    )
     def test_explain(self):
-        if connections[Model.objects.db].vendor == "postgresql":
-            explanation = Model.objects.with_tree_fields().explain()
-            assert "CTE" in explanation
+        explanation = Model.objects.with_tree_fields().explain()
+        assert "CTE" in explanation
 
     def test_tree_queries_without_tree_node(self):
         TreeNodeIsOptional.objects.create(parent=TreeNodeIsOptional.objects.create())
@@ -909,3 +913,68 @@ class TestTreeQueries:
 
         # ids = [obj.tree_pks for obj in Model.objects.tree_fields(tree_pks="parent_id")]
         # self.assertEqual(ids[0], [""])
+
+    def test_invalid_sibling_order_type(self):
+        """Test that invalid sibling order types raise ValueError"""
+        tree = self.create_tree()
+
+        # Create a TreeQuery directly to test the validation in get_rank_table
+        from tree_queries.compiler import TreeCompiler, TreeQuery
+
+        query = TreeQuery(Model)
+        query.sibling_order = 123  # Invalid type
+
+        compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
+
+        # This should raise ValueError during get_rank_table
+        with pytest.raises(
+            ValueError,
+            match="Sibling order must be a string or a list or tuple of strings",
+        ):
+            compiler.get_rank_table()
+
+    @pytest.mark.postgresql
+    @pytest.mark.skipif(
+        connections["default"].vendor != "postgresql",
+        reason="EXPLAIN test only meaningful for PostgreSQL",
+    )
+    def test_explain_query_handling(self):
+        """Test that EXPLAIN queries are handled correctly"""
+        tree = self.create_tree()
+
+        # This should not raise an error and should include EXPLAIN in output
+        explanation = Model.objects.with_tree_fields().explain()
+        assert "CTE" in explanation
+
+    @pytest.mark.mysql
+    @pytest.mark.skipif(
+        connections["default"].vendor != "mysql",
+        reason="MySQL-specific code path test only meaningful for MySQL",
+    )
+    def test_mysql_specific_code_paths(self):
+        """Test MySQL-specific code paths"""
+        tree = self.create_tree()
+
+        # Test that queries work with MySQL-specific string concatenation
+        nodes = list(Model.objects.with_tree_fields())
+        assert len(nodes) == 6
+
+        # This exercises the MySQL-specific CTE implementation
+        descendants = list(tree.root.descendants())
+        assert len(descendants) == 5
+
+    @pytest.mark.postgresql
+    @pytest.mark.skipif(
+        connections["default"].vendor != "postgresql",
+        reason="PostgreSQL-specific descendants query test only meaningful for PostgreSQL",
+    )
+    def test_postgresql_descendants_query_path(self):
+        """Test PostgreSQL-specific descendants query logic"""
+        tree = self.create_tree()
+
+        # This exercises the PostgreSQL-specific path in query.py:120 using ANY() syntax
+        descendants = list(Model.objects.descendants(tree.child2))
+        expected_descendants = [tree.child2_1, tree.child2_2]
+
+        assert len(descendants) == 2
+        assert set(descendants) == set(expected_descendants)
