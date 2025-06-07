@@ -448,21 +448,16 @@ class TreeCompiler(SQLCompiler):
                 if not use_rank_table
                 else self.CTE_POSTGRESQL
             )
-            cte_initial = "array[{column_ref}]::text[], "
-            cte_recursive = "__tree.{name} || {column_ref}::text, "
+            cte_initial = "array[{column}]::text[], "
+            cte_recursive = "__tree.{name} || {column}::text, "
         elif self.connection.vendor == "sqlite":
             cte = self.CTE_SQLITE_SIMPLE if not use_rank_table else self.CTE_SQLITE
-            if use_rank_table:
-                cte_initial = 'printf("{sep}%%s{sep}", {column_ref}), '
-                cte_recursive = '__tree.{name} || printf("%%s{sep}", {column_ref}), '
-            else:
-                # Use concatenation for simple CTE to avoid parameter issues
-                cte_initial = '"{sep}" || {column_ref} || "{sep}", '
-                cte_recursive = '__tree.{name} || {column_ref} || "{sep}", '
+            cte_initial = 'printf("{sep}%%s{sep}", {column}), '
+            cte_recursive = '__tree.{name} || printf("%%s{sep}", {column}), '
         elif self.connection.vendor == "mysql":
             cte = self.CTE_MYSQL_SIMPLE if not use_rank_table else self.CTE_MYSQL
-            cte_initial = 'CAST(CONCAT("{sep}", {column_ref}, "{sep}") AS char(1000)), '
-            cte_recursive = 'CONCAT(__tree.{name}, {column_ref}, "{sep}"), '
+            cte_initial = 'CAST(CONCAT("{sep}", {column}, "{sep}") AS char(1000)), '
+            cte_recursive = 'CONCAT(__tree.{name}, {column}, "{sep}"), '
 
         tree_fields = self.query.get_tree_fields()
         qn = self.connection.ops.quote_name
@@ -486,7 +481,7 @@ class TreeCompiler(SQLCompiler):
             "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
             "tree_fields_initial": "".join(
                 cte_initial.format(
-                    column_ref=column_ref_format.format(column=qn(column)),
+                    column=column_ref_format.format(column=qn(column)),
                     name=qn(name),
                     sep=SEPARATOR,
                 )
@@ -494,7 +489,7 @@ class TreeCompiler(SQLCompiler):
             ),
             "tree_fields_recursive": "".join(
                 cte_recursive.format(
-                    column_ref=column_ref_format.format(column=qn(column)),
+                    column=column_ref_format.format(column=qn(column)),
                     name=qn(name),
                     sep=SEPARATOR,
                 )
