@@ -181,6 +181,147 @@ class TreeCompiler(SQLCompiler):
     )
     """
 
+    # Optimized CTEs without rank table for simple cases
+    CTE_POSTGRESQL_SIMPLE = """
+    WITH RECURSIVE __tree (
+        "tree_depth",
+        "tree_path",
+        "tree_ordering",
+        "tree_pk"
+    ) AS (
+        SELECT
+            0,
+            array[T.{pk}],
+            array[T."{order_field}"],
+            T.{pk}
+        FROM {db_table} T
+        WHERE T."{parent}" IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1,
+            __tree.tree_path || T.{pk},
+            __tree.tree_ordering || T."{order_field}",
+            T.{pk}
+        FROM {db_table} T
+        JOIN __tree ON T."{parent}" = __tree.tree_pk
+    )
+    """
+
+    CTE_MYSQL_SIMPLE = """
+    WITH RECURSIVE __tree(
+        tree_depth,
+        tree_path,
+        tree_ordering,
+        tree_pk
+    ) AS (
+        SELECT
+            0,
+            CAST(CONCAT("{sep}", T.{pk}, "{sep}") AS char(1000)),
+            CAST(CONCAT("{sep}", LPAD(CONCAT(T.`{order_field}`, "{sep}"), 20, "0")) AS char(1000)),
+            T.{pk}
+        FROM {db_table} T
+        WHERE T.`{parent}` IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1,
+            CONCAT(__tree.tree_path, T.{pk}, "{sep}"),
+            CONCAT(__tree.tree_ordering, LPAD(CONCAT(T.`{order_field}`, "{sep}"), 20, "0")),
+            T.{pk}
+        FROM {db_table} T, __tree
+        WHERE __tree.tree_pk = T.`{parent}`
+    )
+    """
+
+    CTE_SQLITE_SIMPLE = """
+    WITH RECURSIVE __tree(
+        tree_depth,
+        tree_path,
+        tree_ordering,
+        tree_pk
+    ) AS (
+        SELECT
+            0,
+            "{sep}" || T."{pk}" || "{sep}",
+            "{sep}" || printf("%%020s", T."{order_field}") || "{sep}",
+            T."{pk}"
+        FROM {db_table} T
+        WHERE T."{parent}" IS NULL
+
+        UNION ALL
+
+        SELECT
+            __tree.tree_depth + 1,
+            __tree.tree_path || T."{pk}" || "{sep}",
+            __tree.tree_ordering || printf("%%020s", T."{order_field}") || "{sep}",
+            T."{pk}"
+        FROM {db_table} T
+        JOIN __tree ON T."{parent}" = __tree.tree_pk
+    )
+    """
+
+    def _can_skip_rank_table(self):
+        """
+        Determine if we can skip the rank table optimization.
+        We can skip it when:
+        1. No tree filters are applied (rank_table_query is unchanged)
+        2. Simple ordering (single field, ascending)
+        3. No custom tree fields
+        """
+
+        # Check if tree filters have been applied
+        original_query = QuerySet(model=_find_tree_model(self.query.model))
+        if str(self.query.get_rank_table_query().query) != str(original_query.query):
+            return False
+
+        # Check if custom tree fields are specified
+        if self.query.get_tree_fields():
+            return False
+
+        # Check for complex ordering
+        sibling_order = self.query.get_sibling_order()
+        if isinstance(sibling_order, (list, tuple)):
+            if len(sibling_order) > 1:
+                return False
+            order_field = sibling_order[0]
+        else:
+            order_field = sibling_order
+
+        # Check for descending order or complex expressions
+        if (
+            isinstance(order_field, str)
+            and order_field.startswith("-")
+            or not isinstance(order_field, str)
+        ):
+            return False
+
+        # Check for related field lookups (contains __)
+        if "__" in order_field:
+            return False
+
+        # Check if the ordering field is numeric/integer
+        # For string fields, the optimization might not preserve correct order
+        # because we bypass the ROW_NUMBER() ranking that the complex CTE uses
+        field = _find_tree_model(self.query.model)._meta.get_field(order_field)
+        if not hasattr(field, "get_internal_type"):
+            return False
+        field_type = field.get_internal_type()
+        if field_type not in (
+            "AutoField",
+            "BigAutoField",
+            "IntegerField",
+            "BigIntegerField",
+            "PositiveIntegerField",
+            "PositiveSmallIntegerField",
+            "SmallIntegerField",
+        ):
+            return False
+
+        return True
+
     def get_rank_table(self):
         # Get and validate sibling_order
         sibling_order = self.query.get_sibling_order()
@@ -273,39 +414,60 @@ class TreeCompiler(SQLCompiler):
             "sep": SEPARATOR,
         }
 
-        # Get the rank_table SQL and params
-        rank_table_sql, rank_table_params = self.get_rank_table()
-        params["rank_table"] = rank_table_sql
+        # Check if we can use the optimized path without rank table
+        use_rank_table = not self._can_skip_rank_table()
+
+        if use_rank_table:
+            # Get the rank_table SQL and params
+            rank_table_sql, rank_table_params = self.get_rank_table()
+            params["rank_table"] = rank_table_sql
+        else:
+            # Use optimized path - get the order field for simple CTE
+            sibling_order = self.query.get_sibling_order()
+            if isinstance(sibling_order, (list, tuple)):
+                order_field = sibling_order[0]
+            else:
+                order_field = sibling_order
+            params["order_field"] = order_field
+            rank_table_params = []
 
         if self.connection.vendor == "postgresql":
-            cte = self.CTE_POSTGRESQL
+            cte = (
+                self.CTE_POSTGRESQL_SIMPLE
+                if not use_rank_table
+                else self.CTE_POSTGRESQL
+            )
             cte_initial = "array[T.{column}]::text[], "
             cte_recursive = "__tree.{name} || T.{column}::text, "
         elif self.connection.vendor == "sqlite":
-            cte = self.CTE_SQLITE
+            cte = self.CTE_SQLITE_SIMPLE if not use_rank_table else self.CTE_SQLITE
             cte_initial = 'printf("{sep}%%s{sep}", {column}), '
             cte_recursive = '__tree.{name} || printf("%%s{sep}", T.{column}), '
         elif self.connection.vendor == "mysql":
-            cte = self.CTE_MYSQL
+            cte = self.CTE_MYSQL_SIMPLE if not use_rank_table else self.CTE_MYSQL
             cte_initial = 'CAST(CONCAT("{sep}", {column}, "{sep}") AS char(1000)), '
             cte_recursive = 'CONCAT(__tree.{name}, T2.{column}, "{sep}"), '
 
         tree_fields = self.query.get_tree_fields()
-        qn = self.connection.ops.quote_name
-        params.update({
-            "tree_fields_columns": "".join(
-                f"{qn(column)}, " for column in tree_fields.values()
-            ),
-            "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
-            "tree_fields_initial": "".join(
-                cte_initial.format(column=qn(column), name=qn(name), sep=SEPARATOR)
-                for name, column in tree_fields.items()
-            ),
-            "tree_fields_recursive": "".join(
-                cte_recursive.format(column=qn(column), name=qn(name), sep=SEPARATOR)
-                for name, column in tree_fields.items()
-            ),
-        })
+        if use_rank_table:
+            # Only add tree_fields params when using the complex CTE
+            qn = self.connection.ops.quote_name
+            params.update({
+                "tree_fields_columns": "".join(
+                    f"{qn(column)}, " for column in tree_fields.values()
+                ),
+                "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
+                "tree_fields_initial": "".join(
+                    cte_initial.format(column=qn(column), name=qn(name), sep=SEPARATOR)
+                    for name, column in tree_fields.items()
+                ),
+                "tree_fields_recursive": "".join(
+                    cte_recursive.format(
+                        column=qn(column), name=qn(name), sep=SEPARATOR
+                    )
+                    for name, column in tree_fields.items()
+                ),
+            })
 
         if "__tree" not in self.query.extra_tables:  # pragma: no branch - unlikely
             tree_params = params.copy()
@@ -326,7 +488,9 @@ class TreeCompiler(SQLCompiler):
                 "tree_path": "__tree.tree_path",
                 "tree_ordering": "__tree.tree_ordering",
             }
-            select.update({name: f"__tree.{name}" for name in tree_fields})
+            if use_rank_table:
+                # Only add custom tree fields when using the complex CTE
+                select.update({name: f"__tree.{name}" for name in tree_fields})
             self.query.add_extra(
                 # Do not add extra fields to the select statement when it is a
                 # summary query or when using .values() or .values_list()
@@ -353,7 +517,7 @@ class TreeCompiler(SQLCompiler):
         # This only works because we know that the CTE is at the start of the query.
         return (
             "".join([explain, cte.format(**params), sql_0]),
-            rank_table_params + sql_1,
+            tuple(list(rank_table_params) + list(sql_1)),
         )
 
     def get_converters(self, expressions):
