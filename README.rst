@@ -42,6 +42,10 @@ Features and limitations
 - Supports only trees with max. 50 levels on MySQL/MariaDB, since those
   databases do not support arrays and require us to provide a maximum
   length for the ``tree_path`` and ``tree_ordering`` upfront.
+- **Performance optimization**: The library automatically detects simple cases
+  (single field ordering, no tree filters, no custom tree fields) and uses an
+  optimized CTE that avoids creating a rank table, significantly improving
+  performance for basic tree queries.
 
 Here's a blog post offering some additional insight (hopefully) into the
 reasons for `django-tree-queries' existence <https://406.ch/writing/django-tree-queries/>`_.
@@ -63,6 +67,10 @@ Usage
   ``order_by()`` method isn't supported -- nodes are returned according to the
   `depth-first search algorithm
   <https://en.wikipedia.org/wiki/Depth-first_search>`__.
+- Use ``tree_filter()`` and ``tree_exclude()`` for better performance when
+  working with large tables - these filter the base table before building
+  the tree structure.
+- Use ``tree_fields()`` to aggregate ancestor field values into arrays.
 - Create a manager using
   ``TreeQuerySet.as_manager(with_tree_fields=True)`` if you want to add
   tree fields to queries by default.
@@ -170,6 +178,46 @@ Basic usage
     # Temporarily override the ordering by siblings.
     nodes = Node.objects.order_siblings_by("id")
 
+    # Revert to a queryset without tree fields (improves performance).
+    nodes = Node.objects.with_tree_fields().without_tree_fields()
+
+
+Filtering tree subsets
+----------------------
+
+**IMPORTANT**: For large tables, always use ``tree_filter()`` or ``tree_exclude()``
+to limit which nodes are processed by the recursive CTE. Without these filters,
+the database evaluates the entire table, which can be extremely slow.
+
+.. code-block:: python
+
+    # Get a specific tree from a forest by filtering on root category
+    product_tree = Node.objects.with_tree_fields().tree_filter(category="products")
+
+    # Get organizational chart for a specific department
+    engineering_tree = Node.objects.with_tree_fields().tree_filter(department="engineering")
+
+    # Exclude entire trees/sections you don't need
+    content_trees = Node.objects.with_tree_fields().tree_exclude(category="archived")
+
+    # Chain multiple tree filters for more specific trees
+    recent_products = (Node.objects.with_tree_fields()
+                      .tree_filter(category="products")
+                      .tree_filter(created_date__gte=datetime.date.today()))
+
+    # Get descendants within a filtered tree subset
+    product_descendants = (Node.objects.with_tree_fields()
+                          .tree_filter(category="products")
+                          .descendants(some_product_node))
+
+    # Filter by site/tenant in multi-tenant applications
+    site_content = Node.objects.with_tree_fields().tree_filter(site_id=request.site.id)
+
+Performance note: ``tree_filter()`` and ``tree_exclude()`` filter the base table
+before the recursive CTE processes relationships, dramatically improving performance
+for large datasets compared to using regular ``filter()`` after ``with_tree_fields()``.
+Best used for selecting complete trees or tree sections rather than scattered nodes.
+
 Note that the tree queryset doesn't support all types of queries Django
 supports. For example, updating all descendants directly isn't supported. The
 reason for that is that the recursive CTE isn't added to the UPDATE query
@@ -213,17 +261,37 @@ If you only want nodes from the top two levels:
 Aggregating ancestor fields
 ---------------------------
 
-It may be useful to aggregate fields from ancestor nodes, e.g. to collect parts
-of a path or something similar.
+Use ``tree_fields()`` to aggregate values from ancestor nodes into arrays. This is
+useful for collecting paths, permissions, categories, or any field that should be
+inherited down the tree hierarchy.
 
 .. code-block:: python
 
+    # Aggregate names from all ancestors into an array
     nodes = Node.objects.with_tree_fields().tree_fields(
         tree_names="name",
     )
+    # Each node now has a tree_names attribute: ['root', 'parent', 'current']
 
-All nodes will now have a ``tree_names`` attribute containing a list of all
-ancestors' names, including the node itself.
+    # Aggregate multiple fields
+    nodes = Node.objects.with_tree_fields().tree_fields(
+        tree_names="name",
+        tree_categories="category",
+        tree_permissions="permission_level",
+    )
+
+    # Build a full path string from ancestor names
+    nodes = Node.objects.with_tree_fields().tree_fields(tree_names="name")
+    for node in nodes:
+        full_path = " > ".join(node.tree_names)  # "Root > Section > Subsection"
+
+    # Combine with tree filtering for better performance
+    active_nodes = (Node.objects.with_tree_fields()
+                    .tree_filter(is_active=True)
+                    .tree_fields(tree_names="name"))
+
+The aggregated fields contain values from all ancestors (root to current node) in
+hierarchical order, including the current node itself.
 
 
 Form fields
