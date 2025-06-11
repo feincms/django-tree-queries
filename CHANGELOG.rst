@@ -4,12 +4,20 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
-- Added Python 3.13, Django 5.1 and 5.2a1 to the testsuite.
+0.20 (2025-06-11)
+~~~~~~~~~~~~~~~~~
+
+- Added Python 3.13, Django 5.1 and 5.2 to the testsuite.
 - Added tests showing that ``.descendants().update(...)`` doesn't work, but
   ``.filter(pk__in=....descendants()).update(...)`` does.
 - Added Python 3.13 to the testsuite.
 - Converted the tests to use pytest.
-- Added a ``tree_info`` template tag.
+- Added a ``tree_info`` template tag and a ``recursetree`` template block.
+- Optimized the performance by avoiding the rank table altogether in the simple
+  case of an ascending ordering on a single field. If that's not possible, the
+  README now documents using ``.tree_filter()`` and ``.tree_exclude()`` to
+  filter the queryset before running the recursive CTE.
+- Improved the test coverage.
 
 
 0.19 (2024-04-25)
