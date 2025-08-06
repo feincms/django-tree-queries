@@ -1,4 +1,5 @@
 import django
+from django.core.exceptions import FieldDoesNotExist
 from django.db import connections
 from django.db.models import Expression, F, QuerySet, Value, Window
 from django.db.models.functions import RowNumber
