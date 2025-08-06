@@ -115,7 +115,7 @@ class TestTreeQueries:
         assert list(Model.objects.with_tree_fields().with_tree_fields()) == []
 
     def test_boring_coverage(self):
-        with pytest.raises(ValueError, match="TreeQuery cannot be used"):
+        with pytest.raises(ValueError, match="Need either using or connection"):
             TreeQuery(Model).get_compiler()
 
     def test_count(self):
