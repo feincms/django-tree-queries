@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
+from django.test import TestCase
 
 from testapp.models import (
     AlwaysTreeQueryModel,
@@ -24,7 +25,7 @@ from testapp.models import (
     UnorderedModel,
     UUIDModel,
 )
-from tree_queries.compiler import SEPARATOR, TreeQuery
+from tree_queries.compiler import SEPARATOR, TreeCompiler, TreeQuery
 from tree_queries.query import pk
 
 
@@ -73,7 +74,6 @@ class TestTreeQueries:
 
     def test_ancestors(self):
         tree = self.create_tree()
-        from django.test import TestCase
 
         tc = TestCase()
         with tc.assertNumQueries(2):
@@ -89,7 +89,6 @@ class TestTreeQueries:
         assert list(tree.root.ancestors(include_self=True)) == [tree.root]
 
         child2_2 = Model.objects.with_tree_fields().get(pk=tree.child2_2.pk)
-        from django.test import TestCase
 
         tc = TestCase()
         with tc.assertNumQueries(1):
@@ -116,7 +115,7 @@ class TestTreeQueries:
         assert list(Model.objects.with_tree_fields().with_tree_fields()) == []
 
     def test_boring_coverage(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="TreeQuery cannot be used"):
             TreeQuery(Model).get_compiler()
 
     def test_count(self):
@@ -163,9 +162,8 @@ class TestTreeQueries:
         # OperationalError would probably be appropriate, but the psycopg2
         # backend raises psycopg2.errors.UndefinedTable, which isn't an
         # OperationalError subclass.
-        with pytest.raises(Exception) as cm:
+        with pytest.raises(Exception, match="__tree"):
             tree.root.descendants().update(name="test")
-        assert "__tree" in str(cm.value)
 
     def test_update_descendants_with_filter(self):
         """Updating works when using a filter"""
@@ -264,9 +262,11 @@ class TestTreeQueries:
         u2.save()
 
         # Siblings are ordered by primary key (in order of creation)
-        assert list([
-            obj.name for obj in UnorderedModel.objects.with_tree_fields()
-        ]) == ["u0", "u2", "u1"]
+        assert [obj.name for obj in UnorderedModel.objects.with_tree_fields()] == [
+            "u0",
+            "u2",
+            "u1",
+        ]
 
     def test_revert(self):
         tree = self.create_tree()
@@ -632,7 +632,7 @@ class TestTreeQueries:
 
         # ensure we get the full tree if querying the super class
         objs = InheritParentModel.objects.with_tree_fields()
-        assert set([(p.name, tuple(p.tree_path)) for p in objs]) == {
+        assert {(p.name, tuple(p.tree_path)) for p in objs} == {
             ("root", (1,)),
             ("child1", (1, 2)),
             ("child1_1", (1, 2, 4)),
@@ -643,7 +643,7 @@ class TestTreeQueries:
 
         # ensure we still get the tree when querying only a subclass (including sub-subclasses)
         objs = InheritChildModel.objects.with_tree_fields()
-        assert set([(p.name, tuple(p.tree_path)) for p in objs]) == {
+        assert {(p.name, tuple(p.tree_path)) for p in objs} == {
             ("root", (1,)),
             ("child1", (1, 2)),
             ("child2_1", (1, 3, 5)),
@@ -651,13 +651,13 @@ class TestTreeQueries:
 
         # ensure we still get the tree when querying only a subclass
         objs = InheritGrandChildModel.objects.with_tree_fields()
-        assert set([(p.name, tuple(p.tree_path)) for p in objs]) == {
+        assert {(p.name, tuple(p.tree_path)) for p in objs} == {
             ("child1", (1, 2)),
         }
 
         # ensure we don't get confused by an intermediate abstract subclass
         objs = InheritConcreteGrandChildModel.objects.with_tree_fields()
-        assert set([(p.name, tuple(p.tree_path)) for p in objs]) == {
+        assert {(p.name, tuple(p.tree_path)) for p in objs} == {
             ("child2_2", (1, 3, 6)),
         }
 
@@ -916,10 +916,9 @@ class TestTreeQueries:
 
     def test_invalid_sibling_order_type(self):
         """Test that invalid sibling order types raise ValueError"""
-        tree = self.create_tree()
+        self.create_tree()
 
         # Create a TreeQuery directly to test the validation in get_rank_table
-        from tree_queries.compiler import TreeCompiler, TreeQuery
 
         query = TreeQuery(Model)
         query.sibling_order = 123  # Invalid type
@@ -940,7 +939,7 @@ class TestTreeQueries:
     )
     def test_explain_query_handling(self):
         """Test that EXPLAIN queries are handled correctly"""
-        tree = self.create_tree()
+        self.create_tree()
 
         # This should not raise an error and should include EXPLAIN in output
         explanation = Model.objects.with_tree_fields().explain()
@@ -981,7 +980,6 @@ class TestTreeQueries:
 
     def test_rank_table_optimization(self):
         """Test that rank table optimization works correctly"""
-        from tree_queries.compiler import TreeCompiler, TreeQuery
 
         # Test that simple cases can skip rank table (all databases now support it)
         query = TreeQuery(Model)
@@ -1002,7 +1000,7 @@ class TestTreeQueries:
         assert not compiler._can_skip_rank_table()
 
         # Test that tree filters prevent optimization
-        tree = self.create_tree()
+        self.create_tree()
         filtered_qs = Model.objects.tree_filter(name="root")
         query = filtered_qs.query
         compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
@@ -1017,7 +1015,7 @@ class TestTreeQueries:
     def test_optimization_sql_differences(self):
         """Test that the optimization produces different SQL"""
 
-        tree = self.create_tree()
+        self.create_tree()
 
         # Simple query that should use optimization
         simple_qs = Model.objects.with_tree_fields()
@@ -1038,9 +1036,8 @@ class TestTreeQueries:
 
     def test_tree_fields_optimization(self):
         """Test that tree fields work with the optimization"""
-        from tree_queries.compiler import TreeCompiler
 
-        tree = self.create_tree()
+        self.create_tree()
 
         # Test that simple tree fields use optimization
         qs = Model.objects.tree_fields(tree_names="name")

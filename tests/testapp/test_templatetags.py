@@ -2,10 +2,12 @@ from types import SimpleNamespace
 
 import pytest
 from django import template
-from django.template import Context, Template
+from django.template import Context, Template, Variable
+from django.test import TestCase
 
-from testapp.models import Model
+from testapp.models import Model, UnorderedModel
 from tree_queries.templatetags.tree_queries import (
+    RecurseTreeNode,
     previous_current_next,
     tree_info,
     tree_item_iterator,
@@ -117,7 +119,7 @@ class TestTemplateTags:
 
     def test_tree_info_filter_basic(self):
         """Test the tree_info template filter basic functionality"""
-        tree = self.create_tree()
+        self.create_tree()
         items = list(Model.objects.with_tree_fields())
 
         result = list(tree_info(items))
@@ -154,7 +156,7 @@ class TestTemplateTags:
 
     def test_tree_info_in_template(self):
         """Test tree_info filter used in an actual Django template"""
-        tree = self.create_tree()
+        self.create_tree()
         items = list(Model.objects.with_tree_fields())
 
         template = Template("""
@@ -183,7 +185,7 @@ class TestTemplateTags:
 
     def test_tree_info_with_ancestors_in_template(self):
         """Test tree_info filter with ancestors in template"""
-        tree = self.create_tree()
+        self.create_tree()
         items = list(Model.objects.with_tree_fields())
 
         template = Template("""
@@ -225,7 +227,7 @@ class TestTemplateTags:
 
     def test_recursetree_basic(self):
         """Test basic recursetree functionality"""
-        tree = self.create_tree()
+        self.create_tree()
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -261,7 +263,7 @@ class TestTemplateTags:
 
     def test_recursetree_with_depth_info(self):
         """Test recursetree with node depth information"""
-        tree = self.create_tree()
+        self.create_tree()
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -303,7 +305,7 @@ class TestTemplateTags:
 
     def test_recursetree_single_root(self):
         """Test recursetree with single root node"""
-        root = Model.objects.create(name="lone-root")
+        Model.objects.create(name="lone-root")
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -321,7 +323,7 @@ class TestTemplateTags:
 
     def test_recursetree_without_tree_fields(self):
         """Test recursetree with queryset that doesn't have tree fields"""
-        tree = self.create_tree()
+        self.create_tree()
         # Use regular queryset without tree fields
         items = Model.objects.all()
 
@@ -340,7 +342,7 @@ class TestTemplateTags:
 
     def test_recursetree_conditional_children(self):
         """Test recursetree with conditional children rendering"""
-        tree = self.create_tree()
+        self.create_tree()
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -367,7 +369,7 @@ class TestTemplateTags:
 
     def test_recursetree_complex_template(self):
         """Test recursetree with more complex template logic"""
-        tree = self.create_tree()
+        self.create_tree()
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -417,7 +419,7 @@ class TestTemplateTags:
 
     def test_recursetree_limited_queryset_depth(self):
         """Test recursetree with queryset limited to specific depth"""
-        tree = self.create_tree()
+        self.create_tree()
         # Only get nodes up to depth 1 (root and first level children)
         items = Model.objects.with_tree_fields().extra(
             where=["__tree.tree_depth <= %s"], params=[1]
@@ -453,7 +455,7 @@ class TestTemplateTags:
 
     def test_recursetree_filtered_by_name(self):
         """Test recursetree with queryset filtered by specific criteria"""
-        tree = self.create_tree()
+        self.create_tree()
         # Only get nodes with specific names (partial tree)
         items = Model.objects.with_tree_fields().filter(
             name__in=["root", "2", "2-1", "1"]  # Excludes "1-1" and "2-2"
@@ -505,7 +507,7 @@ class TestTemplateTags:
 
     def test_recursetree_orphaned_nodes(self):
         """Test recursetree with queryset that has orphaned nodes (parent not in queryset)"""
-        tree = self.create_tree()
+        self.create_tree()
         # Get only leaf nodes (their parents are not included)
         items = Model.objects.with_tree_fields().filter(name__in=["1-1", "2-1", "2-2"])
 
@@ -528,7 +530,7 @@ class TestTemplateTags:
 
     def test_recursetree_mixed_levels(self):
         """Test recursetree with queryset containing nodes from different levels"""
-        tree = self.create_tree()
+        self.create_tree()
         # Mix of root, some children, and some grandchildren
         items = Model.objects.with_tree_fields().filter(
             name__in=["root", "1-1", "2", "2-2"]  # Skip child1 and child2_1
@@ -555,12 +557,13 @@ class TestTemplateTags:
         # 2-2 should be child of 2
         assert 'data-name="2-2"' in result
         # Check nesting - root should contain 2, and 2 should contain 2-2
-        assert "root" in result and "[" in result  # root has children
+        assert "root" in result
+        assert "[" in result
         assert "]" in result  # 2 has children (contains closing bracket)
 
     def test_recursetree_no_database_queries_for_children(self):
         """Test that recursetree doesn't make additional database queries for children"""
-        tree = self.create_tree()
+        self.create_tree()
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -576,7 +579,6 @@ class TestTemplateTags:
         list(items)
 
         # Count queries during template rendering
-        from django.test import TestCase
 
         tc = TestCase()
         with tc.assertNumQueries(0):  # Should not make any additional queries
@@ -592,7 +594,7 @@ class TestTemplateTags:
 
     def test_recursetree_is_leaf_context_variable(self):
         """Test that is_leaf context variable is properly set"""
-        tree = self.create_tree()
+        self.create_tree()
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -632,7 +634,7 @@ class TestTemplateTags:
 
     def test_recursetree_is_leaf_with_limited_queryset(self):
         """Test is_leaf behavior with limited queryset"""
-        tree = self.create_tree()
+        self.create_tree()
         # Only get nodes up to depth 1 - so child1 and child2 appear as leaves
         items = Model.objects.with_tree_fields().extra(
             where=["__tree.tree_depth <= %s"], params=[1]
@@ -664,7 +666,7 @@ class TestTemplateTags:
 
     def test_recursetree_is_leaf_orphaned_nodes(self):
         """Test is_leaf with orphaned nodes (parent not in queryset)"""
-        tree = self.create_tree()
+        self.create_tree()
         # Get only leaf nodes - they should all be treated as leaf nodes
         items = Model.objects.with_tree_fields().filter(name__in=["1-1", "2-1", "2-2"])
 
@@ -685,7 +687,7 @@ class TestTemplateTags:
 
     def test_recursetree_cache_reuse(self):
         """Test that recursetree cache is reused properly"""
-        tree = self.create_tree()
+        self.create_tree()
         items = Model.objects.with_tree_fields()
 
         template = Template("""
@@ -708,12 +710,11 @@ class TestTemplateTags:
 
     def test_recursetree_nodes_without_tree_ordering(self):
         """Test recursetree with nodes that don't have tree_ordering attribute"""
-        from testapp.models import UnorderedModel
 
         # Create tree without tree_ordering
         u0 = UnorderedModel.objects.create(name="u0")
-        u1 = UnorderedModel.objects.create(name="u1", parent=u0)
-        u2 = UnorderedModel.objects.create(name="u2", parent=u0)
+        UnorderedModel.objects.create(name="u1", parent=u0)
+        UnorderedModel.objects.create(name="u2", parent=u0)
 
         items = UnorderedModel.objects.with_tree_fields()
 
@@ -735,12 +736,9 @@ class TestTemplateTags:
     def test_recursetree_get_children_from_cache_edge_cases(self):
         """Test edge cases in _get_children_from_cache method"""
         tree = self.create_tree()
-        items = Model.objects.with_tree_fields()
+        Model.objects.with_tree_fields()
 
         # Create a RecurseTreeNode instance
-        from django.template import Variable
-
-        from tree_queries.templatetags.tree_queries import RecurseTreeNode
 
         queryset_var = Variable("items")
         nodelist = []  # Empty nodelist for testing

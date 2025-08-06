@@ -26,6 +26,7 @@ repos:
     rev: "v0.9.6"
     hooks:
       - id: ruff
+        args: [--unsafe-fixes]
       - id: ruff-format
   - repo: https://github.com/tox-dev/pyproject-fmt
     rev: v2.5.0
@@ -39,7 +40,7 @@ repos:
     hooks:
       - id: prettier
         name: prettier
-        entry: npx prettier@3.4.2 --no-semi --write
+        entry: npx prettier@3.6.2 --no-semi --write
         language: system
         types_or: [markdown, css, javascript]
         require_serial: true
