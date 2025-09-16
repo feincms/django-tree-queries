@@ -40,6 +40,11 @@ class TreeAdmin(ModelAdmin):
 
     position_field = None
 
+    # Lazy loading configuration
+    lazy_loading = True
+    max_initial_depth = 1
+    lazy_load_batch_size = 50
+
     """
     ``ModelAdmin`` subclass for managing models using `django-tree-queries
     <https://github.com/matthiask/django-tree-queries>`_ trees.
@@ -81,12 +86,43 @@ class TreeAdmin(ModelAdmin):
         return response
 
     def tree_admin_context(self, request):
-        return {
+        context = {
             "initiallyCollapseDepth": 1,
+            "lazyLoading": self.lazy_loading,
+            "maxInitialDepth": self.max_initial_depth,
+            "lazyLoadBatchSize": self.lazy_load_batch_size,
         }
 
+        # Add list of parent IDs that have children
+        if self.lazy_loading:
+            context["parentIdsWithChildren"] = list(
+                self.get_parent_ids_with_children(request)
+            )
+
+        return context
+
     def get_queryset(self, request):
-        return self.model._default_manager.with_tree_fields()
+        queryset = self.model._default_manager.with_tree_fields()
+
+        # Apply lazy loading depth limit if enabled
+        if self.lazy_loading and not request.GET.get("load_children"):
+            queryset = queryset.extra(where=[f"tree_depth <= {self.max_initial_depth}"])
+
+        return queryset
+
+    def get_parent_ids_with_children(self, request):
+        """Get a set of parent IDs that have children, for lazy loading."""
+        if not self.lazy_loading:
+            return set()
+
+        # Get all nodes that are parents (have at least one child)
+        parent_ids = (
+            self.model._default_manager.exclude(parent=None)
+            .values_list("parent_id", flat=True)
+            .distinct()
+        )
+
+        return set(parent_ids)
 
     @display(description="")
     def collapse_column(self, instance):
@@ -168,7 +204,7 @@ class TreeAdmin(ModelAdmin):
 
     def get_urls(self):
         """
-        Add our own ``move`` view.
+        Add our own ``move`` and ``load_children`` views.
         """
 
         return [
@@ -176,12 +212,127 @@ class TreeAdmin(ModelAdmin):
                 "move-node/",
                 self.admin_site.admin_view(self.move_node_view),
             ),
+            path(
+                "load-children/<int:parent_pk>/",
+                self.admin_site.admin_view(self.load_children_view),
+            ),
         ] + super().get_urls()
 
     def move_node_view(self, request):
         kw = {"request": request, "modeladmin": self}
         form = MoveNodeForm(request.POST, **kw)
         return HttpResponse(form.process())
+
+    def load_children_view(self, request, parent_pk):
+        """
+        AJAX view to load children of a specific node for lazy loading.
+        Returns rendered HTML rows using Django's actual changelist rendering.
+        """
+        try:
+            parent = self.get_queryset(request).get(pk=parent_pk)
+        except self.model.DoesNotExist:
+            return HttpResponse(
+                json.dumps({"error": "Parent not found"}),
+                content_type="application/json",
+                status=404,
+            )
+
+        # Get children with tree fields
+        children_queryset = (
+            self.model._default_manager.with_tree_fields()
+            .filter(parent=parent)
+            .order_by(
+                self.get_ordering(request)[0]
+                if self.get_ordering(request)
+                else self.position_field or "pk"
+            )
+        )
+
+        # Apply batch size limit
+        if self.lazy_load_batch_size:
+            children_queryset = children_queryset[: self.lazy_load_batch_size]
+
+        # Get parent IDs for proper toggle rendering
+        parent_ids_with_children = self.get_parent_ids_with_children(request)
+
+        # Use Django's actual changelist rendering
+        from django.contrib.admin.views.main import ChangeList
+
+        # Create a real ChangeList instance
+        changelist = ChangeList(
+            request=request,
+            model=self.model,
+            list_display=self.list_display,
+            list_display_links=self.list_display_links,
+            list_filter=(),
+            date_hierarchy=None,
+            search_fields=(),
+            list_select_related=self.list_select_related,
+            list_per_page=self.list_per_page,
+            list_max_show_all=self.list_max_show_all,
+            list_editable=self.list_editable,
+            model_admin=self,
+            sortable_by=self.sortable_by,
+            search_help_text=self.search_help_text,
+        )
+
+        # Override the queryset with our children
+        changelist.result_count = children_queryset.count()
+        changelist.full_result_count = changelist.result_count
+        changelist.result_list = children_queryset
+        changelist.formset = None
+
+        # Create template context
+        {
+            "cl": changelist,
+            "results": list(changelist.result_list),
+            "has_add_permission": self.has_add_permission(request),
+            "has_change_permission": self.has_change_permission(request),
+            "has_delete_permission": self.has_delete_permission(request),
+            "has_view_permission": self.has_view_permission(request),
+        }
+
+        # Process results using Django's result processing
+
+        # Create the results using Django's internal processing
+        processed_results = []
+        for obj in changelist.result_list:
+            row = []
+            for field_name in changelist.list_display:
+                # Use Django's result processing
+                if hasattr(changelist, "lookup_opts"):
+                    f, attr, value = changelist.lookup_field(field_name, obj, self)
+                    formatted_value = changelist.display_for_field(f, value, None)
+                    if field_name in (changelist.list_display_links or []):
+                        url = changelist.url_for_result(obj)
+                        formatted_value = f'<a href="{url}">{formatted_value}</a>'
+                else:
+                    # Fallback
+                    if hasattr(self, field_name):
+                        formatted_value = getattr(self, field_name)(obj)
+                    else:
+                        formatted_value = getattr(obj, field_name, "")
+
+                # Wrap in proper cell
+                css_class = f"field-{field_name}"
+                if field_name == "collapse_column":
+                    css_class = "action-select"
+
+                row.append(f'<td class="{css_class}">{formatted_value}</td>')
+
+            processed_results.append(
+                f'<tr data-pk="{obj.pk}" data-tree-depth="{obj.tree_depth}">{"".join(row)}</tr>'
+            )
+
+        rendered_html = "\n".join(processed_results)
+
+        return HttpResponse(
+            json.dumps({
+                "html": rendered_html.strip(),
+                "parent_ids_with_children": list(parent_ids_with_children),
+            }),
+            content_type="application/json",
+        )
 
     def action_form_view(self, request, obj, *, form_class, title):
         kw = {"request": request, "obj": obj, "modeladmin": self}

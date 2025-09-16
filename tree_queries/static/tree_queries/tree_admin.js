@@ -6,42 +6,213 @@ document.addEventListener("DOMContentLoaded", () => {
   const CHILDREN = 2
   const TR = 3
   const TOGGLE = 4
+  const LOADED = 5
 
   const nodes = {}
   const parents = []
+
+  const context = JSON.parse(
+    document.querySelector("#tree-admin-context").dataset.context,
+  )
+
+  // Get the list of parent IDs that have children from the backend
+  const parentIdsWithChildren = new Set(context.parentIdsWithChildren || [])
+  console.log("Context:", context)
+  console.log("Parent IDs with children:", parentIdsWithChildren)
 
   for (const toggle of root.querySelectorAll(".collapse-toggle")) {
     const node = toggle.closest("tr")
     const pk = +toggle.dataset.pk
     const treeDepth = +toggle.dataset.treeDepth
-    const rec = [pk, treeDepth, [], node, toggle]
+
+    console.log("Processing node:", pk, "depth:", treeDepth)
+
+    // Check if this node has children (either visible or lazy-loadable)
+    const hasChildren = parentIdsWithChildren.has(pk)
+    console.log("Node", pk, "has children:", hasChildren)
+
+    // For lazy loading: if depth >= maxInitialDepth, children are not loaded yet
+    const childrenLoaded =
+      !context.lazyLoading || treeDepth < context.maxInitialDepth
+    console.log("Node", pk, "children loaded:", childrenLoaded)
+
+    const rec = [pk, treeDepth, [], node, toggle, childrenLoaded]
     parents[treeDepth] = rec
     nodes[pk] = rec
 
     node.dataset.pk = pk
     node.dataset.treeDepth = treeDepth
 
+    // Show toggle if this node has children
+    if (hasChildren) {
+      toggle.classList.remove("collapse-hide")
+      console.log("Showing toggle for node:", pk)
+
+      // Add appropriate CSS class for styling
+      if (!childrenLoaded) {
+        toggle.classList.add("has-lazy-children")
+        console.log("Added has-lazy-children class to node:", pk)
+      }
+    }
+
     if (treeDepth > 0) {
       // parent may be on the previous page if the changelist is paginated.
       const parent = parents[treeDepth - 1]
       if (parent) {
         parent[CHILDREN].push(rec)
-        parent[TOGGLE].classList.remove("collapse-hide")
+        console.log("Added node", pk, "as child of", parent[PK])
       }
     }
   }
 
+  console.log("Final nodes object:", nodes)
+
+  function insertRowsFromHTML(htmlString, insertAfter) {
+    console.log("insertRowsFromHTML called with:", htmlString, insertAfter)
+
+    // Create a temporary table to properly parse table rows
+    const tempTable = document.createElement("table")
+    const tempTbody = document.createElement("tbody")
+    tempTable.appendChild(tempTbody)
+    tempTbody.innerHTML = htmlString
+
+    const newRows = tempTbody.querySelectorAll("tr")
+    console.log("Found rows to insert:", newRows.length, Array.from(newRows))
+
+    let currentInsertAfter = insertAfter
+    for (const row of newRows) {
+      console.log("Inserting row:", row, "after:", currentInsertAfter)
+      currentInsertAfter.parentNode.insertBefore(
+        row,
+        currentInsertAfter.nextSibling,
+      )
+      currentInsertAfter = row
+    }
+
+    return Array.from(newRows)
+  }
+
+  function loadChildren(pk) {
+    const node = nodes[pk]
+    if (!node || node[LOADED]) {
+      return Promise.resolve()
+    }
+
+    // Add loading indicator
+    node[TOGGLE].classList.add("loading")
+
+    return fetch(`load-children/${pk}/`, {
+      credentials: "include",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+      },
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        return response.json()
+      })
+      .then((data) => {
+        console.log("Received data:", data)
+
+        if (data.error) {
+          throw new Error(data.error)
+        }
+
+        // Update parent IDs with children if new data was provided
+        if (data.parent_ids_with_children) {
+          for (const pid of data.parent_ids_with_children) {
+            parentIdsWithChildren.add(pid)
+          }
+        }
+
+        console.log("HTML to insert:", data.html)
+
+        // Insert new rows using the rendered HTML
+        const newRows = insertRowsFromHTML(data.html, node[TR])
+        console.log("Inserted rows:", newRows)
+
+        // Process each new row to create node records
+        for (const newRow of newRows) {
+          const childPk = +newRow.dataset.pk
+          const childDepth = +newRow.dataset.treeDepth
+          const childToggle = newRow.querySelector(".collapse-toggle")
+
+          // Check if this child has children and update toggle accordingly
+          const childHasChildren = parentIdsWithChildren.has(childPk)
+          if (childHasChildren && childToggle) {
+            childToggle.classList.remove("collapse-hide")
+
+            // If child is at depth >= maxInitialDepth, its children are not loaded
+            const childrenLoaded = childDepth < context.maxInitialDepth
+            if (!childrenLoaded) {
+              childToggle.classList.add("has-lazy-children")
+            }
+          }
+
+          const childRec = [
+            childPk,
+            childDepth,
+            [],
+            newRow,
+            childToggle,
+            childDepth < context.maxInitialDepth,
+          ]
+
+          nodes[childPk] = childRec
+          node[CHILDREN].push(childRec)
+        }
+
+        node[LOADED] = true
+        node[TOGGLE].classList.remove("loading")
+        return newRows
+      })
+      .catch((error) => {
+        console.error("Failed to load children:", error)
+        node[TOGGLE].classList.remove("loading")
+        // Could add user notification here
+        throw error
+      })
+  }
+
   function setCollapsed(pk, collapsed) {
-    nodes[pk][TOGGLE].classList.toggle("collapsed", collapsed)
-    for (const rec of nodes[pk][CHILDREN]) {
+    const node = nodes[pk]
+    console.log("setCollapsed called:", pk, collapsed, "node:", node)
+    node[TOGGLE].classList.toggle("collapsed", collapsed)
+
+    // If expanding and children not loaded yet, load them
+    if (!collapsed && context.lazyLoading && !node[LOADED]) {
+      console.log("Loading children for node:", pk)
+      loadChildren(pk).then(() => {
+        console.log("Children loaded, applying visibility")
+        // After loading, apply collapse state to new children
+        for (const rec of node[CHILDREN]) {
+          rec[TR].classList.toggle("collapse-hide", false)
+        }
+      })
+      return
+    }
+
+    console.log(
+      "Using existing children for node:",
+      pk,
+      "children:",
+      node[CHILDREN],
+    )
+    // Normal collapse/expand for already loaded children
+    for (const rec of node[CHILDREN]) {
       rec[TR].classList.toggle("collapse-hide", collapsed)
-      setCollapsed(rec[PK], collapsed)
+      if (collapsed) {
+        setCollapsed(rec[PK], collapsed)
+      }
     }
   }
 
   function initiallyCollapse(minDepth) {
     for (const rec of Object.values(nodes)) {
-      if (rec[DEPTH] >= minDepth && rec[CHILDREN].length) {
+      const hasChildren = parentIdsWithChildren.has(rec[PK])
+      if (rec[DEPTH] >= minDepth && hasChildren) {
         setCollapsed(rec[PK], true)
       }
     }
@@ -51,16 +222,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const collapseToggle = e.target.closest(".collapse-toggle")
     if (collapseToggle) {
       e.preventDefault()
-      setCollapsed(
-        +collapseToggle.dataset.pk,
-        !collapseToggle.classList.contains("collapsed"),
+      const pk = +collapseToggle.dataset.pk
+      const isCurrentlyCollapsed =
+        collapseToggle.classList.contains("collapsed")
+      console.log(
+        "Toggle clicked:",
+        pk,
+        "currently collapsed:",
+        isCurrentlyCollapsed,
       )
+      setCollapsed(pk, !isCurrentlyCollapsed)
     }
   })
 
-  const context = JSON.parse(
-    document.querySelector("#tree-admin-context").dataset.context,
-  )
   initiallyCollapse(context.initiallyCollapseDepth)
 })
 

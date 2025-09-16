@@ -68,6 +68,37 @@
   font-size: 1rem;
 }
 
+/* Loading state for collapse toggle */
+.collapse-toggle.loading::after {
+  content: "";
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid var(--link-fg);
+  border-radius: 50%;
+  width: 12px;
+  height: 12px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Styling for nodes with lazy-loadable children - use same triangle as normal nodes */
+.collapse-toggle.has-lazy-children::after {
+  content: "\25E2"; /* Same triangle as regular nodes */
+  font-size: 1rem;
+}
+
+.collapse-toggle.has-lazy-children.collapsed::after {
+  content: "\25E2";
+  transform: rotate(-45deg) translateY(2px);
+}
+
 .collapse-hide {
   display: none !important;
 }
