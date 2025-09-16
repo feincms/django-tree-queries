@@ -8,7 +8,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import F
 from django.http import HttpResponse
 from django.urls import path
-from django.utils.html import format_html, mark_safe
+from django.utils.html import format_html, format_html_join, mark_safe
 from django.utils.translation import gettext_lazy as _
 from js_asset.js import JS
 
@@ -17,6 +17,14 @@ __all__ = (
     "TreeAdmin",
     "AncestorFilter",
 )
+
+
+MOVE_POSITIONS = {
+    "before": _("before"),
+    "first-child": _("as first child"),
+    "last-child": _("as last child"),
+    "after": _("after"),
+}
 
 
 class TreeAdmin(ModelAdmin):
@@ -105,6 +113,9 @@ class TreeAdmin(ModelAdmin):
         Show a ``move`` link which leads to a separate page where the move
         destination may be selected.
         """
+        options = format_html_join(
+            "", '<option value="{}">{}</option>', MOVE_POSITIONS.items()
+        )
         return format_html(
             """\
 <div class="move-controls">
@@ -113,10 +124,7 @@ class TreeAdmin(ModelAdmin):
 </button>
 <select class="move-paste" data-pk="{}" title="{}">
   <option value="">---</option>
-  <option value="before">{}</option> -->
-  <option value="first-child">{}</option>
-  <option value="last-child">{}</option>
-  <option value="after">{}</option>
+  {}
 </select>
 </div>
 """,
@@ -124,10 +132,7 @@ class TreeAdmin(ModelAdmin):
             _("Move '{}' to a new location").format(instance),
             instance.pk,
             _("Choose new location"),
-            _("before"),
-            _("as first child"),
-            _("as last child"),
-            _("after"),
+            options,
         )
 
     move_column.short_description = _("move")
@@ -206,8 +211,9 @@ class MoveNodeForm(forms.Form):
         self.fields["relative_to"] = forms.ModelChoiceField(
             queryset=self.modeladmin.get_queryset(self.request)
         )
-        positions = ("before", "first-child", "last-child", "after")
-        self.fields["position"] = forms.ChoiceField(choices=zip(positions, positions))
+        self.fields["position"] = forms.ChoiceField(
+            choices=list(MOVE_POSITIONS.items())
+        )
 
     def process(self):
         if not self.is_valid():
