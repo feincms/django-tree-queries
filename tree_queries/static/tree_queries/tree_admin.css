@@ -1,0 +1,150 @@
+.box {
+  white-space: nowrap;
+  position: relative;
+  margin: -8px;
+  overflow: hidden;
+}
+
+.box-drawing {
+  position: absolute;
+  display: inline-block;
+  font-family: monospace;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: normal;
+}
+
+.box-drawing i {
+  display: inline-block;
+  font-style: normal;
+  width: 30px;
+}
+
+.box-drawing i.l::after {
+  content: "\2502";
+}
+
+.box-drawing i.a::after {
+  content: "\251c";
+}
+
+.box-text {
+  padding: 8px;
+}
+
+.box-text.ellipsize {
+  max-width: min(50vw, 70ch);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.field-collapse_column {
+  position: relative;
+  width: 1rem;
+  padding: 0 !important;
+}
+
+.collapse-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  display: inline-block;
+  transition: 0.1s transform;
+  transform: rotate(0deg) translateY(6px);
+  transform-origin: 50% 50%;
+
+  cursor: pointer;
+}
+
+.collapse-toggle.collapsed {
+  transform: rotate(-45deg) translateY(2px);
+}
+
+.collapse-toggle::after {
+  content: "\25E2";
+  font-size: 1rem;
+}
+
+.collapse-hide {
+  display: none !important;
+}
+
+.move-status {
+  background: var(--selected-row);
+  padding: 8px 16px;
+  cursor: pointer;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid var(--hairline-color);
+  z-index: 25; /* .nav-sidebar uses 15 and 20 */
+}
+
+.field-move_column {
+  padding-top: 0;
+  padding-bottom: 0;
+  vertical-align: middle;
+}
+
+.move-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.move-cut {
+  appearance: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--link-fg);
+  display: inline-grid;
+  place-items: center;
+}
+
+.moving .move-selected .move-paste {
+  display: none;
+}
+
+#changelist tr[data-tree-depth] {
+  --_f: 3%;
+  background: color-mix(in oklab, var(--body-fg) var(--_f), var(--body-bg));
+}
+#changelist tr[data-tree-depth]:nth-child(2n) {
+  --_f: 0%;
+}
+#changelist tr[data-tree-depth="0"] {
+  --_f: 18%;
+}
+#changelist tr[data-tree-depth="0"]:nth-child(2n) {
+  --_f: 15%;
+}
+#changelist tr[data-tree-depth="1"] {
+  --_f: 9%;
+}
+#changelist tr[data-tree-depth="1"]:nth-child(2n) {
+  --_f: 6%;
+}
+
+#changelist tbody tr.move-selected {
+  background: var(--selected-row);
+}
+
+#changelist tbody tr.move-highlight {
+  background: var(--message-success-bg);
+}
+
+.move-paste {
+  display: none;
+  max-width: 6ch;
+  height: 28px;
+}
+
+.moving .move-paste {
+  display: revert;
+}
