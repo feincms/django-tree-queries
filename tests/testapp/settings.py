@@ -22,12 +22,12 @@ if os.environ.get("DB_BACKEND") in {"mysql", "mariadb"}:
     }
 
 INSTALLED_APPS = [
-    # "django.contrib.auth",
-    # "django.contrib.admin",
-    # "django.contrib.contenttypes",
-    # "django.contrib.sessions",
-    # "django.contrib.staticfiles",
-    # "django.contrib.messages",
+    "django.contrib.auth",
+    "django.contrib.admin",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.staticfiles",
+    "django.contrib.messages",
     "testapp",
     "tree_queries",
 ]

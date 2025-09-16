@@ -7,6 +7,10 @@ Next version
 - Added the missing ``FieldDoesNotExist`` import. Thanks Kircheneer.
 - Fixed all errors reported by pre-commit and started running hooks
   automatically.
+- Added ``TreeAdmin`` class for Django admin with intuitive tree
+  management, node moving capabilities, and support for both positioned and
+  unpositioned trees. Requires ``django-js-asset`` which is included in the new
+  ``admin`` extra.
 
 
 0.20 (2025-06-11)

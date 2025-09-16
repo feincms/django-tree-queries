@@ -33,8 +33,14 @@ classifiers = [
 dynamic = [
   "version",
 ]
+dependencies = [
+]
+optional-dependencies.admin = [
+  "django-js-asset",
+]
 optional-dependencies.tests = [
   "coverage",
+  "django-js-asset",
   "pytest",
   "pytest-cov",
   "pytest-django",

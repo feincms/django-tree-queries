@@ -67,6 +67,34 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
   let statusElement
 
+  const performMove = (formData) => {
+    return fetch("move-node/", {
+      credentials: "include",
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        return response.text()
+      })
+      .then((result) => {
+        if (result === "ok") {
+          setMoving({ ..._moving, highlight: true })
+          window.location.reload()
+        } else {
+          throw new Error("Move operation failed")
+        }
+      })
+      .catch((error) => {
+        console.error("Move operation failed:", error)
+        setMoving(null)
+        alert("Failed to move node. Please try again.")
+        throw error // Re-throw for additional handling if needed
+      })
+  }
+
   const showMoving = (moving) => {
     if (!statusElement) {
       statusElement = document.createElement("div")
@@ -87,31 +115,82 @@ document.addEventListener("DOMContentLoaded", () => {
         setMoving(null)
       }, 1000)
     } else if (moving) {
-      statusElement.textContent = `${moving.title} (click here to cancel)`
+      if (moving.toRoot) {
+        statusElement.innerHTML = `
+          ${moving.title}
+          <button class="confirm-root-move">Confirm</button>
+          <button class="cancel-move">Cancel</button>
+        `
+      } else {
+        statusElement.innerHTML = `
+          ${moving.title}
+          <button class="cancel-move">Cancel</button>
+        `
+      }
       statusElement.style.display = "block"
-      document.body.classList.add("moving")
+      document.body.setAttribute(
+        "data-move",
+        moving.toRoot ? "root" : "regular",
+      )
 
       document
         .querySelector(`tr[data-pk="${moving.pk}"]`)
         .classList.add("move-selected")
     } else {
       statusElement.style.display = "none"
-      document.body.classList.remove("moving")
+      document.body.removeAttribute("data-move")
     }
   }
 
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".move-cut")
     if (btn) {
-      setMoving(
-        _moving?.pk === btn.dataset.pk
-          ? null
-          : { pk: btn.dataset.pk, title: btn.title },
-      )
+      if (_moving?.pk === btn.dataset.pk && !_moving?.toRoot) {
+        // Same node in regular mode - cancel
+        setMoving(null)
+      } else {
+        // Start or switch to regular move mode
+        setMoving({ pk: btn.dataset.pk, title: btn.title })
+      }
+    }
+
+    const rootBtn = e.target.closest(".move-to-root")
+    if (rootBtn) {
+      if (_moving?.pk === rootBtn.dataset.pk && _moving?.toRoot) {
+        // Same node in root mode - cancel
+        setMoving(null)
+      } else {
+        // Start or switch to root move mode
+        setMoving({
+          pk: rootBtn.dataset.pk,
+          title: rootBtn.title,
+          toRoot: true,
+        })
+      }
+    }
+
+    const confirmBtn = e.target.closest(".confirm-root-move")
+    if (confirmBtn && _moving?.toRoot) {
+      // Execute the root move
+      const csrf = document.querySelector(
+        "input[name=csrfmiddlewaretoken]",
+      ).value
+      const body = new FormData()
+      body.append("csrfmiddlewaretoken", csrf)
+      body.append("move", _moving.pk)
+      body.append("position", "root")
+
+      performMove(body)
+    }
+
+    const cancelBtn = e.target.closest(".cancel-move")
+    if (cancelBtn) {
+      setMoving(null)
+      return
     }
 
     const el = e.target.closest(".move-status")
-    if (el) {
+    if (el && !e.target.closest(".confirm-root-move")) {
       setMoving(null)
     }
   })
@@ -128,32 +207,10 @@ document.addEventListener("DOMContentLoaded", () => {
       body.append("relative_to", select.dataset.pk)
       body.append("position", select.value)
 
-      fetch("move-node/", {
-        credentials: "include",
-        method: "POST",
-        body,
+      performMove(body).catch(() => {
+        // Reset the select to its default state on error
+        select.value = ""
       })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-          }
-          return response.text()
-        })
-        .then((result) => {
-          if (result === "ok") {
-            setMoving({ ..._moving, highlight: true })
-            window.location.reload()
-          } else {
-            throw new Error("Move operation failed")
-          }
-        })
-        .catch((error) => {
-          console.error("Move operation failed:", error)
-          setMoving(null)
-          // Reset the select to its default state
-          select.value = ""
-          alert("Failed to move node. Please try again.")
-        })
 
       // console.debug(JSON.stringify({ _moving, where: `${select.dataset.pk}:${select.value}` }))
     }

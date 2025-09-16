@@ -468,3 +468,56 @@ Example with depth-limited queryset:
 
 This is particularly useful for creating expandable tree interfaces or
 rendering only portions of large trees for performance.
+
+
+Django Admin Integration
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+django-tree-queries includes a ``TreeAdmin`` class for Django's admin interface
+that provides an intuitive tree management experience with drag-and-drop style
+node moving capabilities.
+
+Installation
+------------
+
+To use the admin functionality, install with the ``admin`` extra:
+
+.. code-block:: bash
+
+    pip install django-tree-queries[admin]
+
+Usage
+-----
+
+.. code-block:: python
+
+    from django.contrib import admin
+    from tree_queries.admin import TreeAdmin
+    from .models import Category
+
+    @admin.register(Category)
+    class CategoryAdmin(TreeAdmin):
+        list_display = [*TreeAdmin.list_display, "name", "is_active"]
+        position_field = "position"  # Optional: field used for sibling ordering
+
+The ``TreeAdmin`` provides:
+
+- **Tree visualization**: Nodes are displayed with indentation and visual tree structure
+- **Collapsible nodes**: Click to expand/collapse branches for better navigation
+- **Node moving**: Cut and paste nodes to reorganize the tree structure
+- **Flexible ordering**: Supports both ordered (with position field) and unordered trees
+- **Root moves**: Direct "move to root" buttons for trees without sibling ordering
+
+**Configuration:**
+
+- Set ``position_field`` to the field name used for positioning siblings (e.g., ``"position"``, ``"order"``)
+- Leave ``position_field = None`` for trees positioned by other criteria (pk, name, etc.)
+- The admin automatically adapts its interface based on whether positioning is controllable
+
+**Required list_display columns:**
+
+- ``collapse_column``: Shows expand/collapse toggles
+- ``indented_title``: Displays the tree structure with indentation
+- ``move_column``: Provides move controls (cut, paste, move-to-root)
+
+These are included by default in ``TreeAdmin.list_display``.

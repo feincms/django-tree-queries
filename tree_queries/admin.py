@@ -26,8 +26,20 @@ MOVE_POSITIONS = {
     "after": _("after"),
 }
 
+# Positions available when we don't control sibling ordering
+MOVE_POSITIONS_PARENT_ONLY = {
+    "child": _("as child"),
+}
+
 
 class TreeAdmin(ModelAdmin):
+    """
+    Position field configuration. Set to the name of the field used for positioning
+    siblings, or None if no position field exists or if positioning is not controllable.
+    """
+
+    position_field = None
+
     """
     ``ModelAdmin`` subclass for managing models using `django-tree-queries
     <https://github.com/matthiask/django-tree-queries>`_ trees.
@@ -56,7 +68,6 @@ class TreeAdmin(ModelAdmin):
         response.context_data["media"] += forms.Media(
             css={
                 "all": [
-                    "content_editor/material-icons.css",
                     "tree_queries/tree_admin.css",
                 ]
             },
@@ -113,15 +124,32 @@ class TreeAdmin(ModelAdmin):
         Show a ``move`` link which leads to a separate page where the move
         destination may be selected.
         """
-        options = format_html_join(
-            "", '<option value="{}">{}</option>', MOVE_POSITIONS.items()
+        positions = (
+            MOVE_POSITIONS if self.position_field else MOVE_POSITIONS_PARENT_ONLY
         )
+        options = format_html_join(
+            "", '<option value="{}">{}</option>', positions.items()
+        )
+
+        # Add "to root" button for models without controllable positioning
+        # Only show for nodes that aren't already at root level
+        root_button = ""
+        if not self.position_field and instance.parent_id is not None:
+            root_button = format_html(
+                '<button class="move-to-root" type="button" data-pk="{}" title="{}">'
+                '<span class="tree-icon"></span>'
+                "</button>",
+                instance.pk,
+                _("Move '{}' to root level").format(instance),
+            )
+
         return format_html(
             """\
 <div class="move-controls">
 <button class="move-cut" type="button" data-pk="{}" title="{}">
-  <span class="material-icons">content_cut</span>
+  <span class="tree-icon"></span>
 </button>
+{}
 <select class="move-paste" data-pk="{}" title="{}">
   <option value="">---</option>
   {}
@@ -130,6 +158,7 @@ class TreeAdmin(ModelAdmin):
 """,
             instance.pk,
             _("Move '{}' to a new location").format(instance),
+            root_button,
             instance.pk,
             _("Choose new location"),
             options,
@@ -209,11 +238,32 @@ class MoveNodeForm(forms.Form):
             queryset=self.modeladmin.get_queryset(self.request)
         )
         self.fields["relative_to"] = forms.ModelChoiceField(
-            queryset=self.modeladmin.get_queryset(self.request)
+            queryset=self.modeladmin.get_queryset(self.request), required=False
         )
-        self.fields["position"] = forms.ChoiceField(
-            choices=list(MOVE_POSITIONS.items())
+        positions = (
+            MOVE_POSITIONS
+            if self.modeladmin.position_field
+            else MOVE_POSITIONS_PARENT_ONLY
         )
+        # Always allow "root" position even if not shown in dropdown (handled by separate button)
+        all_choices = list(positions.items())
+        if ("root", _("to root")) not in all_choices:
+            all_choices.append(("root", _("to root")))
+
+        self.fields["position"] = forms.ChoiceField(choices=all_choices)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        position = cleaned_data.get("position")
+        relative_to = cleaned_data.get("relative_to")
+
+        # relative_to is required for all positions except "root"
+        if position != "root" and not relative_to:
+            raise forms.ValidationError(
+                _("A target node is required for this move position.")
+            )
+
+        return cleaned_data
 
     def process(self):
         if not self.is_valid():
@@ -225,11 +275,14 @@ class MoveNodeForm(forms.Form):
         relative_to = self.cleaned_data["relative_to"]
         position = self.cleaned_data["position"]
 
-        if position in {"first-child", "last-child"}:
-            move._set_parent(relative_to)
+        if position == "root":
+            move.parent = None
+            siblings_qs = move.__class__._default_manager.filter(parent=None)
+        elif position in {"first-child", "last-child"} or position == "child":
+            move.parent = relative_to
             siblings_qs = relative_to.children
         else:
-            move._set_parent(relative_to.parent)
+            move.parent = relative_to.parent
             siblings_qs = relative_to.__class__._default_manager.filter(
                 parent=relative_to.parent
             )
@@ -245,27 +298,37 @@ class MoveNodeForm(forms.Form):
             messages.error(self.request, str(exc))
             return "error"
 
-        if position == "before":
-            siblings_qs.filter(position__gte=relative_to.position).update(
-                position=F("position") + 10
-            )
-            move.position = relative_to.position
+        position_field = self.modeladmin.position_field
+
+        if position == "before" and position_field:
+            siblings_qs.filter(**{
+                f"{position_field}__gte": getattr(relative_to, position_field)
+            }).update(**{position_field: F(position_field) + 10})
+            setattr(move, position_field, getattr(relative_to, position_field))
             move.save()
 
-        elif position == "after":
-            siblings_qs.filter(position__gt=relative_to.position).update(
-                position=F("position") + 10
-            )
-            move.position = relative_to.position + 10
+        elif position == "after" and position_field:
+            siblings_qs.filter(**{
+                f"{position_field}__gt": getattr(relative_to, position_field)
+            }).update(**{position_field: F(position_field) + 10})
+            setattr(move, position_field, getattr(relative_to, position_field) + 10)
             move.save()
 
-        elif position == "first-child":
-            siblings_qs.update(position=F("position") + 10)
-            move.position = 10
+        elif position == "first-child" and position_field:
+            siblings_qs.update(**{position_field: F(position_field) + 10})
+            setattr(move, position_field, 10)
             move.save()
 
-        elif position == "last-child":
-            move.position = 0  # Let AbstractPage.save handle the position
+        elif position == "last-child" and position_field:
+            setattr(
+                move, position_field, 0
+            )  # Let model's save method handle the position
+            move.save()
+
+        elif position in {"child", "root"}:
+            # Parent already set above, just save
+            if position_field and position == "root":
+                setattr(move, position_field, 0)  # Let model handle positioning
             move.save()
 
         else:  # pragma: no cover
