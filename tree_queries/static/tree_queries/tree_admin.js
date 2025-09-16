@@ -132,10 +132,28 @@ document.addEventListener("DOMContentLoaded", () => {
         credentials: "include",
         method: "POST",
         body,
-      }).then(() => {
-        setMoving({ ..._moving, highlight: true })
-        window.location.reload()
       })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+          return response.text()
+        })
+        .then((result) => {
+          if (result === "ok") {
+            setMoving({ ..._moving, highlight: true })
+            window.location.reload()
+          } else {
+            throw new Error("Move operation failed")
+          }
+        })
+        .catch((error) => {
+          console.error("Move operation failed:", error)
+          setMoving(null)
+          // Reset the select to its default state
+          select.value = ""
+          alert("Failed to move node. Please try again.")
+        })
 
       // console.debug(JSON.stringify({ _moving, where: `${select.dataset.pk}:${select.value}` }))
     }
