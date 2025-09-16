@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.21 (2025-09-16)
+~~~~~~~~~~~~~~~~~
+
 - Added the missing ``FieldDoesNotExist`` import. Thanks Kircheneer.
 - Fixed all errors reported by pre-commit and started running hooks
   automatically.
