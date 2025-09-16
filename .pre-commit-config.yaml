@@ -18,16 +18,18 @@ repos:
     hooks:
       - id: django-upgrade
         args: [--target-version, "3.2"]
-  - repo: https://github.com/MarcoGorelli/absolufy-imports
-    rev: v0.3.1
-    hooks:
-      - id: absolufy-imports
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.13.0"
     hooks:
       - id: ruff
         args: [--unsafe-fixes]
       - id: ruff-format
+  - repo: https://github.com/biomejs/pre-commit
+    rev: "v2.2.4"
+    hooks:
+      - id: biome-check
+        args: [--unsafe]
+        verbose: true
   - repo: https://github.com/tox-dev/pyproject-fmt
     rev: v2.6.0
     hooks:
@@ -36,11 +38,3 @@ repos:
     rev: v0.24.1
     hooks:
       - id: validate-pyproject
-  - repo: local
-    hooks:
-      - id: prettier
-        name: prettier
-        entry: npx prettier@3.6.2 --no-semi --write
-        language: system
-        types_or: [markdown, css, javascript]
-        require_serial: true
