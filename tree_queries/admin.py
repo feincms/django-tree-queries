@@ -10,7 +10,6 @@ from django.http import HttpResponse
 from django.urls import path
 from django.utils.html import format_html, format_html_join, mark_safe
 from django.utils.translation import gettext_lazy as _
-from js_asset.js import JS
 
 
 __all__ = (
@@ -61,6 +60,8 @@ class TreeAdmin(ModelAdmin):
 
     @csrf_protect_m
     def changelist_view(self, request, **kwargs):
+        from js_asset.js import JS  # noqa: PLC0415
+
         response = super().changelist_view(request, **kwargs)
         if not hasattr(response, "context_data"):
             return response
