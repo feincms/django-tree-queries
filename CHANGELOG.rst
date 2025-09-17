@@ -7,6 +7,8 @@ Next version
 - Made the new ``tree_queries.admin`` module importable when
   ``django-js-asset`` isn't installed so that ``compilemessages`` and other
   tools automatically importing this module are allowed to work.
+- Added an example migration to the documentation for migrating from
+  django-mptt to django-tree-queries. Thanks to @felixmm for providing this!
 
 
 0.21 (2025-09-16)

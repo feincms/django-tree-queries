@@ -521,3 +521,52 @@ The ``TreeAdmin`` provides:
 - ``move_column``: Provides move controls (cut, paste, move-to-root)
 
 These are included by default in ``TreeAdmin.list_display``.
+
+
+Migrating from django-mptt
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When migrating from django-mptt to django-tree-queries, you'll need to populate
+the ``position`` field (or whatever field you use for sibling ordering) based on
+the existing MPTT ``lft`` values. Here's an example migration:
+
+.. code-block:: python
+
+    def fill_position(apps, schema_editor):
+        ModelWithMPTT = apps.get_model("your_app", "ModelWithMPTT")
+        db_alias = schema_editor.connection.alias
+        position_map = ModelWithMPTT.objects.using(db_alias).annotate(
+            lft_rank=Window(
+                expression=RowNumber(),
+                partition_by=[F("parent_id")],
+                order_by=["lft"],
+            ),
+        ).in_bulk()
+        # Update batches of 2000 objects.
+        batch_size = 2000
+        qs = ModelWithMPTT.objects.all()
+        batches = (qs[i : i + batch_size] for i in range(0, qs.count(), batch_size))
+        for batch in batches:
+            for obj in batch:
+                obj.position = position_map[obj.pk].lft_rank
+            ModelWithMPTT.objects.bulk_update(batch, ["position"])
+
+    class Migration(migrations.Migration):
+
+        dependencies = [...]
+
+        operations = [
+            migrations.RunPython(
+                code=fill_position,
+                reverse_code=migrations.RunPython.noop,
+            )
+        ]
+
+This migration uses Django's ``Window`` function with ``RowNumber()`` to assign
+position values based on the original MPTT ``lft`` ordering, ensuring that siblings
+maintain their relative order after the migration.
+
+Note that the position field is used purely for ordering siblings and is not an
+index. By default, django-tree-queries' admin interface starts with a position
+value of 10 and increments by 10 (10, 20, 30, etc.) to make it clear that the
+value is not an index, but just something to order siblings by.
