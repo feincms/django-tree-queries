@@ -100,6 +100,10 @@ class TreeQuerySet(models.QuerySet):
         Returns ancestors of the given node ordered from the root of the tree
         towards deeper levels, optionally including the node itself
         """
+        if not include_self and of.parent_id is None:
+            # Node without parent cannot have ancestors.
+            return self.none()
+
         if not hasattr(of, "tree_path"):
             of = self.with_tree_fields().get(pk=pk(of))
 
