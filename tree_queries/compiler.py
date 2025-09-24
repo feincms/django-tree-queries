@@ -521,8 +521,9 @@ class TreeCompiler(SQLCompiler):
             if skip_tree_fields:
                 # Skip tree fields for summary queries
                 select = {}
-            elif self.query.values_select:
-                # For values() queries, only include tree fields that were specifically requested
+            elif self.query.values_select is not None:
+                # For values() queries (including values() with no args), 
+                # only include tree fields that were specifically requested
                 requested_fields = set(self.query.values_select)
                 available_tree_fields = {"tree_depth", "tree_path", "tree_ordering"} | set(tree_fields.keys())
                 requested_tree_fields = requested_fields & available_tree_fields

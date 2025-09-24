@@ -336,6 +336,31 @@ class TestTreeQueries:
         assert root_item["tree_names"] == ["root"]
         assert child2_2_item["tree_names"] == ["root", "2", "2-2"]
 
+    def test_values_no_args_excludes_tree_fields(self):
+        """Test that values() with no arguments excludes tree fields (maintains current behavior)"""
+        tree = self.create_tree()
+        
+        # values() with no arguments should NOT include tree fields, even when tree fields are enabled
+        # This maintains backward compatibility with existing behavior
+        all_values = list(Model.objects.with_tree_fields().values())
+        
+        # Should have at least one record
+        assert len(all_values) > 0
+        
+        # Check the first record has only model fields, not tree fields
+        first_record = all_values[0]
+        
+        # Should have model fields
+        assert "custom_id" in first_record
+        assert "name" in first_record
+        assert "order" in first_record
+        assert "parent_id" in first_record
+        
+        # Should NOT have tree fields
+        assert "tree_depth" not in first_record
+        assert "tree_path" not in first_record
+        assert "tree_ordering" not in first_record
+
     def test_loops(self):
         tree = self.create_tree()
         tree.root.parent_id = tree.child1.pk
