@@ -1055,3 +1055,61 @@ class TestTreeQueries:
 
         child2_2 = next(obj for obj in results if obj.name == "2-2")
         assert child2_2.tree_names == ["root", "2", "2-2"]
+
+    def test_create_with_tree_fields(self):
+        """Test that tree fields are available on instances returned by create() when with_tree_fields=True"""
+        
+        # Clear any existing data
+        AlwaysTreeQueryModel.objects.all().delete()
+        Model.objects.all().delete()
+        
+        # Test with AlwaysTreeQueryModel (has with_tree_fields=True by default)
+        root = AlwaysTreeQueryModel.objects.create(name="Root")
+        
+        # Tree fields should be available directly after create()
+        assert hasattr(root, 'tree_depth'), "tree_depth should be available after create() with with_tree_fields=True"
+        assert hasattr(root, 'tree_path'), "tree_path should be available after create() with with_tree_fields=True"
+        assert hasattr(root, 'tree_ordering'), "tree_ordering should be available after create() with with_tree_fields=True"
+        
+        # Verify the values are correct
+        assert root.tree_depth == 0, f"Root should have tree_depth=0, got {root.tree_depth}"
+        assert root.tree_path == [root.pk], f"Root tree_path should be [pk], got {root.tree_path}"
+        
+        # Test with child
+        child = AlwaysTreeQueryModel.objects.create(name="Child", parent=root)
+        assert hasattr(child, 'tree_depth'), "tree_depth should be available after create() for child"
+        assert child.tree_depth == 1, f"Child should have tree_depth=1, got {child.tree_depth}"
+        assert len(child.tree_path) == 2, f"Child tree_path should have 2 elements, got {child.tree_path}"
+        assert child.tree_path[0] == root.pk, f"Child tree_path[0] should be parent pk, got {child.tree_path}"
+        assert child.tree_path[1] == child.pk, f"Child tree_path[1] should be child pk, got {child.tree_path}"
+        
+        # Test with regular Model (doesn't have with_tree_fields=True by default)
+        regular_instance = Model.objects.create(name="Regular")
+        assert not hasattr(regular_instance, 'tree_depth'), "tree_depth should NOT be available when with_tree_fields=False"
+        
+        # But should be available when queried with tree fields
+        regular_with_fields = Model.objects.with_tree_fields().get(pk=regular_instance.pk)
+        assert hasattr(regular_with_fields, 'tree_depth'), "tree_depth should be available when explicitly requested"
+        
+    def test_bulk_create_tree_fields(self):
+        """Test that bulk_create behaves correctly with tree fields"""
+        
+        AlwaysTreeQueryModel.objects.all().delete()
+        
+        # bulk_create should work but won't have tree fields on returned objects
+        # (this is expected and documented behavior)
+        objs = AlwaysTreeQueryModel.objects.bulk_create([
+            AlwaysTreeQueryModel(name="Bulk1"),
+            AlwaysTreeQueryModel(name="Bulk2"),
+        ])
+        
+        # The returned objects won't have tree fields (expected)
+        for obj in objs:
+            assert not hasattr(obj, 'tree_depth'), "bulk_create objects should not have tree fields"
+        
+        # But when queried, they should have tree fields
+        queried_objs = list(AlwaysTreeQueryModel.objects.filter(name__startswith="Bulk"))
+        assert len(queried_objs) == 2
+        for obj in queried_objs:
+            assert hasattr(obj, 'tree_depth'), "queried objects should have tree fields"
+            assert obj.tree_depth == 0, "bulk created root nodes should have tree_depth=0"
