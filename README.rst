@@ -570,3 +570,142 @@ Note that the position field is used purely for ordering siblings and is not an
 index. By default, django-tree-queries' admin interface starts with a position
 value of 10 and increments by 10 (10, 20, 30, etc.) to make it clear that the
 value is not an index, but just something to order siblings by.
+
+
+Working with Related Models and Constraints
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+django-tree-queries prioritizes simplicity and reliability over feature completeness.
+Some Django ORM features are intentionally not supported to keep the implementation
+stable across Django versions and avoid complex edge cases.
+
+Unsupported Features
+--------------------
+
+**select_related() with tree queries is not supported**
+
+The recursive Common Table Expression (CTE) that powers tree queries cannot be
+easily combined with ``select_related()`` joins. Attempting to use ``select_related()``
+on a tree queryset may not work as expected or could break in future Django versions.
+
+.. code-block:: python
+
+    # This doesn't work and is not supported:
+    Model.objects.with_tree_fields().select_related('some_related_field')
+
+    # This also doesn't work when querying models that reference tree models:
+    ReferenceModel.objects.select_related('tree_field').filter(tree_field__in=some_tree_query)
+
+**Other limitations:**
+
+- Complex annotations and aggregations may not work correctly with tree fields
+- Subqueries involving tree fields require careful handling (see workarounds below)
+- UPDATE queries don't work directly on tree querysets
+
+Recommended Workarounds
+-----------------------
+
+**Use prefetch_related() instead of select_related()**
+
+For loading related data efficiently, use ``prefetch_related()`` which works well
+with tree queries:
+
+.. code-block:: python
+
+    # Query tree models and prefetch related objects
+    tree_nodes = Model.objects.with_tree_fields().prefetch_related('related_references')
+    
+    for node in tree_nodes:
+        # No additional database queries
+        references = node.related_references.all()
+
+**Use Prefetch() for more control**
+
+When you need more control over the related query, use Django's ``Prefetch`` object:
+
+.. code-block:: python
+
+    from django.db.models import Prefetch
+    
+    # Prefetch related objects with their own select_related or filtering
+    tree_nodes = Model.objects.with_tree_fields().prefetch_related(
+        Prefetch(
+            'referencemodel_set',
+            queryset=ReferenceModel.objects.select_related('other_field').filter(is_active=True)
+        )
+    )
+
+**Query the reference model first**
+
+When working with models that reference tree models, often it's more efficient
+to query the referencing model first:
+
+.. code-block:: python
+
+    # Instead of trying to select_related the tree field
+    references = ReferenceModel.objects.filter(some_condition=True)
+    
+    # Then get tree data for the referenced tree nodes
+    tree_pks = [ref.tree_field_id for ref in references if ref.tree_field_id]
+    tree_nodes = Model.objects.with_tree_fields().filter(pk__in=tree_pks)
+
+**Use tree queries in filters**
+
+Tree querysets work excellent in filter conditions:
+
+.. code-block:: python
+
+    # Get all references that point to descendants of a specific node
+    some_node = Model.objects.get(pk=1)
+    references = ReferenceModel.objects.filter(
+        tree_field__in=some_node.descendants(include_self=True)
+    )
+    
+    # Combine with prefetch_related for efficiency
+    references = ReferenceModel.objects.filter(
+        tree_field__in=some_node.descendants(include_self=True)
+    ).prefetch_related('tree_field')
+
+**Separate queries for complex cases**
+
+For complex scenarios, it's often cleaner to use separate, focused queries:
+
+.. code-block:: python
+
+    # First, get your tree data
+    tree_nodes = Model.objects.with_tree_fields().filter(some_tree_condition=True)
+    
+    # Then get related data based on the tree query results
+    tree_pks = [node.pk for node in tree_nodes]
+    references = ReferenceModel.objects.filter(tree_field__in=tree_pks)
+    
+    # Group them in Python if needed
+    references_by_tree_id = {}
+    for ref in references:
+        references_by_tree_id.setdefault(ref.tree_field_id, []).append(ref)
+
+**Working around UPDATE limitations**
+
+Tree querysets don't support direct updates, but you can work around this:
+
+.. code-block:: python
+
+    # This doesn't work:
+    # some_node.descendants().update(is_active=False)
+    
+    # Use this instead:
+    descendant_pks = list(some_node.descendants().values_list('pk', flat=True))
+    Model.objects.filter(pk__in=descendant_pks).update(is_active=False)
+
+Why These Limitations Exist
+----------------------------
+
+These constraints exist to maintain django-tree-queries' core strengths:
+
+- **Stability**: The library works consistently across Django 3.2 to 5.x
+- **Simplicity**: Fewer features mean fewer bugs and edge cases
+- **Performance**: The CTE-based approach is highly optimized for tree operations
+- **Reliability**: By avoiding complex query combinations, the library remains predictable
+
+The recommended patterns above are not just workarounds—they often result in
+clearer, more maintainable code that's easier to optimize and debug.
