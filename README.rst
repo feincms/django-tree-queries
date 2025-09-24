@@ -26,10 +26,14 @@ Features and limitations
 - The fields added by the common table expression always are
   ``tree_depth``, ``tree_path`` and ``tree_ordering``. The names cannot
   be changed. ``tree_depth`` is an integer, ``tree_path`` an array of
-  primary keys and ``tree_ordering`` an array of values used for
-  ordering nodes within their siblings. Note that the contents of the
-  ``tree_path`` and ``tree_ordering`` are subject to change. You shouldn't rely
-  on their contents.
+  primary keys representing the path from the root to the current node
+  (including the current node itself), and ``tree_ordering`` an array of
+  values used for ordering nodes within their siblings at each level of
+  the tree hierarchy. With UUID primary keys and no explicit ordering
+  specified, both fields may contain the same UUID values since siblings
+  are ordered by their primary key by default. Note that the contents of
+  the ``tree_path`` and ``tree_ordering`` are subject to change. You
+  shouldn't rely on their contents.
 - Besides adding the fields mentioned above the package only adds queryset
   methods for ordering siblings and filtering ancestors and descendants. Other
   features may be useful, but will not be added to the package just because
@@ -180,6 +184,57 @@ Basic usage
 
     # Revert to a queryset without tree fields (improves performance).
     nodes = Node.objects.with_tree_fields().without_tree_fields()
+
+
+Understanding tree fields
+-------------------------
+
+When using ``with_tree_fields()``, each node gets three additional attributes:
+
+- **``tree_depth``**: An integer representing the depth of the node in the tree
+  (root nodes have depth 0)
+- **``tree_path``**: An array containing the primary keys of all ancestors plus
+  the current node itself, representing the path from root to current node
+- **``tree_ordering``**: An array containing the ordering/ranking values used
+  for sibling ordering at each level of the tree hierarchy
+
+The key difference between ``tree_path`` and ``tree_ordering``:
+
+.. code-block:: python
+
+    # Example tree structure:
+    #   Root (pk=1, order=0)
+    #   ├── Child A (pk=2, order=10)  
+    #   │   └── Grandchild (pk=4, order=5)
+    #   └── Child B (pk=3, order=20)
+
+    # For the Grandchild node:
+    grandchild = Node.objects.with_tree_fields().get(pk=4)
+    
+    # tree_path shows the route through primary keys: Root -> Child A -> Grandchild
+    assert grandchild.tree_path == [1, 2, 4]  # [root.pk, child_a.pk, grandchild.pk]
+    
+    # tree_ordering shows ordering values at each level: Root's order, Child A's order, Grandchild's order
+    assert grandchild.tree_ordering == [0, 10, 5]  # [root.order, child_a.order, grandchild.order]
+
+**Important note for UUID primary keys**: When using UUID primary keys without
+explicit ordering (like a ``position`` field), siblings are ordered by their
+primary key by default. This means ``tree_path`` and ``tree_ordering`` will
+contain the same UUID values, which can be confusing. To make the distinction
+clearer, consider adding an explicit ordering field:
+
+.. code-block:: python
+
+    class Node(TreeNode):
+        id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+        name = models.CharField(max_length=100)
+        position = models.PositiveIntegerField(default=0)
+        
+        class Meta:
+            ordering = ['position']
+
+With explicit ordering, ``tree_path`` will contain UUIDs while ``tree_ordering``
+will contain the position values used for ordering.
 
 
 Filtering tree subsets
