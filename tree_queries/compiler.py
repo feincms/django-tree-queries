@@ -516,10 +516,21 @@ class TreeCompiler(SQLCompiler):
             }
             # Add custom tree fields for both simple and complex CTEs
             select.update({name: f"__tree.{name}" for name in tree_fields})
+            
+            # Determine which tree fields to include in the select clause
+            if skip_tree_fields:
+                # Skip tree fields for summary queries
+                select = {}
+            elif self.query.values_select:
+                # For values() queries, only include tree fields that were specifically requested
+                requested_fields = set(self.query.values_select)
+                available_tree_fields = {"tree_depth", "tree_path", "tree_ordering"} | set(tree_fields.keys())
+                requested_tree_fields = requested_fields & available_tree_fields
+                select = {name: expr for name, expr in select.items() if name in requested_tree_fields}
+            # else: keep all tree fields for normal queries (select stays as-is)
+            
             self.query.add_extra(
-                # Do not add extra fields to the select statement when it is a
-                # summary query or when using .values() or .values_list()
-                select={} if skip_tree_fields or self.query.values_select else select,
+                select=select,
                 select_params=None,
                 where=["__tree.tree_pk = {db_table}.{pk}".format(**tree_params)],
                 params=None,

@@ -239,6 +239,41 @@ class TestTreeQueries:
             Model.objects.ancestors(tree.child2_1).values_list("parent", flat=True)
         ) == [tree.root.parent_id, tree.child2.parent_id]
 
+    def test_values_with_tree_fields(self):
+        """Test that tree fields can be included in values() calls"""
+        tree = self.create_tree()
+        
+        # Test values() with tree_depth
+        depth_values = list(Model.objects.with_tree_fields().values("name", "tree_depth"))
+        expected_depths = [
+            {"name": "root", "tree_depth": 0},
+            {"name": "1", "tree_depth": 1},
+            {"name": "1-1", "tree_depth": 2},
+            {"name": "2", "tree_depth": 1},
+            {"name": "2-1", "tree_depth": 2},
+            {"name": "2-2", "tree_depth": 2},
+        ]
+        assert depth_values == expected_depths
+        
+        # Test values() with only tree fields
+        tree_only = list(Model.objects.with_tree_fields().values("tree_depth"))
+        assert tree_only == [
+            {"tree_depth": 0},
+            {"tree_depth": 1},
+            {"tree_depth": 2},
+            {"tree_depth": 1},
+            {"tree_depth": 2},
+            {"tree_depth": 2},
+        ]
+        
+        # Test values() with tree_path
+        path_values = list(Model.objects.with_tree_fields().values("name", "tree_path"))
+        root_path = next(item for item in path_values if item["name"] == "root")
+        child2_2_path = next(item for item in path_values if item["name"] == "2-2")
+        
+        assert root_path["tree_path"] == [tree.root.pk]
+        assert child2_2_path["tree_path"] == [tree.root.pk, tree.child2.pk, tree.child2_2.pk]
+
     def test_loops(self):
         tree = self.create_tree()
         tree.root.parent_id = tree.child1.pk
