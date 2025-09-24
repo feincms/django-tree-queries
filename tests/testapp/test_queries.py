@@ -1055,3 +1055,45 @@ class TestTreeQueries:
 
         child2_2 = next(obj for obj in results if obj.name == "2-2")
         assert child2_2.tree_names == ["root", "2", "2-2"]
+
+    def test_combinator_operations(self):
+        """Test that union, intersection, and difference work with tree queries"""
+        tree = self.create_tree()
+
+        # Test union operation
+        qs1 = Model.objects.with_tree_fields().filter(name__in=["root", "1"])
+        qs2 = Model.objects.with_tree_fields().filter(name__in=["2", "2-1"])
+        union_result = list(qs1.union(qs2))
+        
+        # Should have 4 unique objects
+        assert len(union_result) == 4
+        names = {obj.name for obj in union_result}
+        assert names == {"root", "1", "2", "2-1"}
+        
+        # Tree fields should not be available in combinator queries
+        assert not hasattr(union_result[0], 'tree_depth')
+
+        # Test intersection operation  
+        qs3 = Model.objects.with_tree_fields().filter(name__in=["1", "2", "1-1"])
+        qs4 = Model.objects.with_tree_fields().filter(name__in=["2", "2-1", "2-2"])
+        intersect_result = list(qs3.intersection(qs4))
+        
+        # Should have 1 object in common
+        assert len(intersect_result) == 1
+        assert intersect_result[0].name == "2"
+
+        # Test difference operation
+        qs5 = Model.objects.with_tree_fields().filter(name__in=["1", "2", "1-1"])
+        qs6 = Model.objects.with_tree_fields().filter(name__in=["2"])
+        diff_result = list(qs5.difference(qs6))
+        
+        # Should have 2 objects (1 and 1-1)
+        assert len(diff_result) == 2
+        names = {obj.name for obj in diff_result}
+        assert names == {"1", "1-1"}
+
+        # Verify that regular tree queries still work normally
+        regular_tree_result = list(Model.objects.with_tree_fields().filter(name="root"))
+        assert len(regular_tree_result) == 1
+        assert hasattr(regular_tree_result[0], 'tree_depth')
+        assert regular_tree_result[0].tree_depth == 0
