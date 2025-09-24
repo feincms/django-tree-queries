@@ -74,6 +74,36 @@ Usage
 - Create a manager using
   ``TreeQuerySet.as_manager(with_tree_fields=True)`` if you want to add
   tree fields to queries by default.
+
+**Important note about tree fields and object creation:**
+
+When using ``TreeQuerySet.as_manager(with_tree_fields=True)``, tree fields
+(``tree_depth``, ``tree_path``, ``tree_ordering``) are automatically available
+on instances returned by ``Model.objects.create()``. For example:
+
+.. code-block:: python
+
+    class Node(TreeNode):
+        name = models.CharField(max_length=100)
+        objects = TreeQuerySet.as_manager(with_tree_fields=True)
+
+    # Tree fields are available immediately after create()
+    root = Node.objects.create(name="Root")
+    print(root.tree_depth)  # 0
+    print(root.tree_path)   # [root.pk]
+
+    child = Node.objects.create(name="Child", parent=root)
+    print(child.tree_depth)  # 1
+
+However, ``Model.objects.bulk_create()`` does not provide tree fields on the
+returned objects (this is expected behavior for performance reasons).
+
+**Regarding refresh_from_db():**
+
+The ``refresh_from_db()`` method may not restore tree fields for models that
+don't set ``base_manager_name = "objects"`` in their Meta class. If you need
+to refresh tree fields, use ``obj = Model.objects.get(pk=obj.pk)`` instead.
+
 - Until documentation is more complete I'll have to refer you to the
   `test suite
   <https://github.com/matthiask/django-tree-queries/blob/main/tests/testapp/test_queries.py>`_
