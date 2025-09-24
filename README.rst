@@ -34,6 +34,9 @@ Features and limitations
   methods for ordering siblings and filtering ancestors and descendants. Other
   features may be useful, but will not be added to the package just because
   it's possible to do so.
+- Includes ``add_related_count()`` method for counting related objects with
+  support for cumulative counting across tree hierarchies (replacement for
+  django-mptt's method of the same name).
 - Little code, and relatively simple when compared to other tree
   management solutions for Django. No redundant values so the only way
   to end up with corrupt data is by introducing a loop in the tree
@@ -217,6 +220,69 @@ Performance note: ``tree_filter()`` and ``tree_exclude()`` filter the base table
 before the recursive CTE processes relationships, dramatically improving performance
 for large datasets compared to using regular ``filter()`` after ``with_tree_fields()``.
 Best used for selecting complete trees or tree sections rather than scattered nodes.
+
+
+Counting related objects
+------------------------
+
+django-tree-queries provides ``add_related_count()`` as a replacement for 
+django-mptt's method of the same name. This method annotates tree nodes with
+counts of related objects, with support for cumulative counting that includes
+counts from descendant nodes.
+
+.. code-block:: python
+
+    # Example models
+    class Region(TreeNode):
+        name = models.CharField(max_length=100)
+    
+    class Site(models.Model):
+        name = models.CharField(max_length=100)
+        region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name="sites")
+
+    # Count sites directly assigned to each region (non-cumulative)
+    regions = Region.objects.add_related_count(
+        Region.objects.all(),
+        Site,
+        'region',
+        'site_count',
+        cumulative=False
+    )
+    
+    # Each region will have a site_count attribute with direct counts only
+    for region in regions:
+        print(f"{region.name}: {region.site_count} direct sites")
+
+    # Count sites assigned to each region and all its descendants (cumulative)
+    regions_cumulative = Region.objects.add_related_count(
+        Region.objects.all(),
+        Site,
+        'region',
+        'total_sites',
+        cumulative=True
+    )
+    
+    # Each region will have a total_sites attribute with cumulative counts
+    for region in regions_cumulative:
+        print(f"{region.name}: {region.total_sites} total sites")
+
+The method signature is:
+
+.. code-block:: python
+
+    add_related_count(queryset, rel_model, rel_field, count_attr, cumulative=False)
+
+Parameters:
+
+- ``queryset``: The queryset to annotate (typically ``self``)
+- ``rel_model``: The related model to count instances of
+- ``rel_field``: Field name on ``rel_model`` that points to the tree model
+- ``count_attr``: Name of the annotation to add to each instance
+- ``cumulative``: If ``True``, counts include related objects from descendants
+
+The implementation automatically detects the database backend and uses optimized
+queries for PostgreSQL (with array operations) while maintaining compatibility
+with SQLite, MySQL, and MariaDB.
 
 Note that the tree queryset doesn't support all types of queries Django
 supports. For example, updating all descendants directly isn't supported. The
