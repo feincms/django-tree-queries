@@ -139,3 +139,23 @@ class OneToOneRelatedOrder(models.Model):
 
     def __str__(self):
         return ""
+
+
+# Models for testing add_related_count functionality
+class Region(TreeNode):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class Site(models.Model):
+    name = models.CharField(max_length=100)
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.CASCADE,
+        related_name="sites",
+    )
+
+    def __str__(self):
+        return self.name

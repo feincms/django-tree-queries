@@ -19,7 +19,9 @@ from testapp.models import (
     MultiOrderedModel,
     OneToOneRelatedOrder,
     ReferenceModel,
+    Region,
     RelatedOrderModel,
+    Site,
     StringOrderedModel,
     TreeNodeIsOptional,
     UnorderedModel,
@@ -1055,3 +1057,92 @@ class TestTreeQueries:
 
         child2_2 = next(obj for obj in results if obj.name == "2-2")
         assert child2_2.tree_names == ["root", "2", "2-2"]
+
+    def test_add_related_count_non_cumulative(self):
+        """Test add_related_count with cumulative=False"""
+        # Create regions
+        country = Region.objects.create(name="USA")
+        state1 = Region.objects.create(name="California", parent=country)
+        state2 = Region.objects.create(name="Texas", parent=country)
+        city1 = Region.objects.create(name="San Francisco", parent=state1)
+        city2 = Region.objects.create(name="Los Angeles", parent=state1)
+        
+        # Create sites - some directly associated with each region
+        Site.objects.create(name="Site 1", region=city1)
+        Site.objects.create(name="Site 2", region=city1)  # 2 sites for city1
+        Site.objects.create(name="Site 3", region=city2)  # 1 site for city2
+        Site.objects.create(name="Site 4", region=state1)  # 1 site directly for state1
+        Site.objects.create(name="Site 5", region=country)  # 1 site directly for country
+        
+        # Test non-cumulative counting
+        result = Region.objects.add_related_count(
+            Region.objects.all(),
+            Site,
+            'region',
+            'site_count',
+            cumulative=False
+        )
+        
+        regions_by_name = {r.name: r for r in result}
+        
+        # Check direct counts only
+        assert regions_by_name["San Francisco"].site_count == 2
+        assert regions_by_name["Los Angeles"].site_count == 1
+        assert regions_by_name["California"].site_count == 1
+        assert regions_by_name["Texas"].site_count == 0
+        assert regions_by_name["USA"].site_count == 1
+
+    def test_add_related_count_cumulative(self):
+        """Test add_related_count with cumulative=True"""
+        # Create regions
+        country = Region.objects.create(name="USA")
+        state1 = Region.objects.create(name="California", parent=country)
+        state2 = Region.objects.create(name="Texas", parent=country)
+        city1 = Region.objects.create(name="San Francisco", parent=state1)
+        city2 = Region.objects.create(name="Los Angeles", parent=state1)
+        city3 = Region.objects.create(name="Houston", parent=state2)
+        
+        # Create sites
+        Site.objects.create(name="Site 1", region=city1)
+        Site.objects.create(name="Site 2", region=city1)  # 2 sites for city1
+        Site.objects.create(name="Site 3", region=city2)  # 1 site for city2
+        Site.objects.create(name="Site 4", region=city3)  # 1 site for city3
+        Site.objects.create(name="Site 5", region=state1)  # 1 site directly for state1
+        Site.objects.create(name="Site 6", region=country)  # 1 site directly for country
+        
+        # Test cumulative counting
+        result = Region.objects.add_related_count(
+            Region.objects.all(),
+            Site,
+            'region',
+            'site_count',
+            cumulative=True
+        )
+        
+        regions_by_name = {r.name: r for r in result}
+        
+        # Check cumulative counts
+        assert regions_by_name["San Francisco"].site_count == 2  # Just its own
+        assert regions_by_name["Los Angeles"].site_count == 1    # Just its own
+        assert regions_by_name["Houston"].site_count == 1        # Just its own
+        assert regions_by_name["California"].site_count == 4     # 1 direct + 2 from SF + 1 from LA
+        assert regions_by_name["Texas"].site_count == 1          # 1 from Houston
+        assert regions_by_name["USA"].site_count == 6            # All sites
+
+    def test_add_related_count_empty_tree(self):
+        """Test add_related_count with no related objects"""
+        # Create regions but no sites
+        country = Region.objects.create(name="USA")
+        state = Region.objects.create(name="California", parent=country)
+        
+        # Test with no related objects
+        result = Region.objects.add_related_count(
+            Region.objects.all(),
+            Site,
+            'region',
+            'site_count',
+            cumulative=True
+        )
+        
+        for region in result:
+            assert region.site_count == 0 or region.site_count is None

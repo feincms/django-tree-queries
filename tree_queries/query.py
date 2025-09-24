@@ -1,4 +1,5 @@
 from django.db import connections, models
+from django.db.models import Count, OuterRef, Subquery
 from django.db.models.sql.query import Query
 
 from tree_queries.compiler import SEPARATOR, TreeQuery
@@ -139,3 +140,91 @@ class TreeQuerySet(models.QuerySet):
         if not include_self:
             return queryset.exclude(pk=pk(of))
         return queryset
+
+    def add_related_count(
+        self,
+        queryset,
+        rel_model,
+        rel_field,
+        count_attr,
+        cumulative=False,
+    ):
+        """
+        Annotates each instance in the queryset with a count of related objects.
+        
+        This is a replacement for django-mptt's add_related_count method, adapted
+        to work with django-tree-queries' CTE-based approach.
+        
+        Args:
+            queryset: The queryset to annotate
+            rel_model: The related model to count instances of  
+            rel_field: Field name on rel_model that points to the tree model
+            count_attr: Name of the annotation to add to each instance
+            cumulative: If True, count includes related objects from descendants
+            
+        Returns:
+            An annotated queryset
+            
+        Example:
+            Region.objects.add_related_count(
+                Region.objects.all(),
+                Site,
+                'region', 
+                'site_count',
+                cumulative=True
+            )
+        """
+        # If not cumulative, use simple annotation based on direct relationships
+        if not cumulative:
+            # Get the related field to find the reverse relationship name
+            rel_field_obj = rel_model._meta.get_field(rel_field)
+            if hasattr(rel_field_obj, 'remote_field') and rel_field_obj.remote_field:
+                related_name = rel_field_obj.remote_field.related_name
+                if related_name:
+                    # Use the explicitly defined related_name
+                    return queryset.annotate(**{
+                        count_attr: Count(related_name, distinct=True)
+                    })
+            
+            # Fall back to generic reverse lookup
+            reverse_name = f"{rel_model._meta.model_name}_set"
+            return queryset.annotate(**{
+                count_attr: Count(reverse_name, distinct=True)
+            })
+        
+        # For cumulative counts, we need to count related objects for each node
+        # and all its descendants using tree_path
+        base_queryset = queryset.with_tree_fields()
+        connection = connections[queryset.db]
+        
+        if connection.vendor == "postgresql":
+            # PostgreSQL: Use array operations with tree_path
+            # Create a subquery that gets all descendants of each node (including self)
+            # and counts their related objects
+            descendants_subquery = self.model.objects.with_tree_fields().extra(
+                where=["%s = ANY(__tree.tree_path)"],
+                params=[OuterRef('pk')]
+            ).values('pk')
+            
+            count_subquery = Subquery(
+                rel_model.objects.filter(
+                    **{f"{rel_field}__in": descendants_subquery}
+                ).aggregate(total=Count('pk')).values('total')[:1]
+            )
+        else:
+            # Other databases: Use string operations on tree_path
+            # Find nodes whose tree_path contains the current node's pk
+            descendants_subquery = self.model.objects.with_tree_fields().extra(
+                where=[
+                    f'instr(__tree.tree_path, "{SEPARATOR}" || %s || "{SEPARATOR}") <> 0'
+                ],
+                params=[OuterRef('pk')]
+            ).values('pk')
+            
+            count_subquery = Subquery(
+                rel_model.objects.filter(
+                    **{f"{rel_field}__in": descendants_subquery}
+                ).aggregate(total=Count('pk')).values('total')[:1]
+            )
+        
+        return base_queryset.annotate(**{count_attr: count_subquery})
