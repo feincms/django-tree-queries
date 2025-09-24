@@ -16,7 +16,7 @@ Django package for tree queries using adjacency lists and recursive CTEs. Suppor
 - **NEVER CANCEL: tox full test suite takes 20-45 minutes across all combinations. Set timeout to 60+ minutes.**
 - `tox` - Run complete test suite across all supported Python/Django/database combinations
 - `tox -e py312-dj52-sqlite` - Run tests for specific Python/Django combination (fastest, ~2-5 minutes)
-- `tox -e py312-dj52-postgresql` - Run with PostgreSQL (requires service setup)  
+- `tox -e py312-dj52-postgresql` - Run with PostgreSQL (requires service setup)
 - `tox -e py312-dj52-mysql` - Run with MySQL/MariaDB (requires service setup)
 - **Alternative testing without tox (faster for development):**
   - `pip install Django>=5.0 pytest pytest-django` - Install minimal test dependencies
@@ -41,7 +41,7 @@ Always test these scenarios after making changes to core tree functionality:
 2. **Query Methods**: Test `ancestors()`, `descendants()`, `order_siblings_by()` methods
 3. **Performance Filters**: Test `tree_filter()` and `tree_exclude()` with large datasets
 
-### Admin Interface Testing  
+### Admin Interface Testing
 When modifying admin functionality, always test:
 1. **TreeAdmin Display**: Navigate to Django admin, verify tree structure shows with indentation and collapse/expand
 2. **Node Moving**: Test cut/paste workflow - click "Cut" button, select destination from dropdown, verify move operations
@@ -66,12 +66,12 @@ execute_from_command_line(['manage.py', 'runserver', '127.0.0.1:8000', '--norelo
 "
 
 # Server starts in ~5 seconds, then navigate to:
-# http://127.0.0.1:8000/admin/testapp/model/ (positioned trees)  
+# http://127.0.0.1:8000/admin/testapp/model/ (positioned trees)
 # http://127.0.0.1:8000/admin/testapp/unorderedmodel/ (unpositioned trees)
 
 # Test complete workflows:
 # 1. Create tree structure with 3+ levels
-# 2. Use collapse/expand buttons  
+# 2. Use collapse/expand buttons
 # 3. Cut a node and move it to different positions
 # 4. Verify tree structure integrity after moves
 ```
@@ -80,7 +80,7 @@ execute_from_command_line(['manage.py', 'runserver', '127.0.0.1:8000', '--norelo
 
 ### Core Package (`tree_queries/`)
 - `models.py` - TreeNode abstract model class with parent ForeignKey
-- `query.py` - TreeQuerySet with CTE-based tree methods  
+- `query.py` - TreeQuerySet with CTE-based tree methods
 - `admin.py` - TreeAdmin class and MoveNodeForm for Django admin
 - `fields.py` - TreeNodeForeignKey and form fields
 - `forms.py` - TreeNodeChoiceField and TreeNodeMultipleChoiceField
@@ -121,7 +121,7 @@ DB_BACKEND=sqlite3 DB_NAME=":memory:" tox -e py312-dj52-sqlite
 # PostgreSQL (requires service)
 DB_BACKEND=postgresql DB_HOST=localhost DB_PORT=5432 tox -e py312-dj52-postgresql
 
-# MySQL/MariaDB (requires service)  
+# MySQL/MariaDB (requires service)
 DB_BACKEND=mysql DB_HOST=localhost DB_PORT=3306 tox -e py312-dj52-mysql
 ```
 
@@ -146,7 +146,7 @@ class CategoryAdmin(TreeAdmin):
     position_field = "order"  # Field used for sibling positioning
 
 # Unpositioned tree (ordering by other criteria)
-@admin.register(Department) 
+@admin.register(Department)
 class DepartmentAdmin(TreeAdmin):
     list_display = [*TreeAdmin.list_display, "name"]
     # position_field = None (default) - uses direct root moves
