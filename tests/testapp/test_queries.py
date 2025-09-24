@@ -391,6 +391,23 @@ class TestTreeQueries:
         assert obj.name == "Something"
         AlwaysTreeQueryModel.objects.all().delete()
 
+    def test_tree_query_select_related(self):
+        AlwaysTreeQueryModel.objects.create(
+            name="Nothing", category=AlwaysTreeQueryModelCategory.objects.create()
+        )
+        AlwaysTreeQueryModel.objects.create(
+            name="Nothing", category=AlwaysTreeQueryModelCategory.objects.create()
+        )
+
+        tc = TestCase()
+        with tc.assertNumQueries(1):
+            _read = [
+                (obj, obj.category)
+                for obj in AlwaysTreeQueryModel.objects.with_tree_fields().select_related(
+                    "category"
+                )
+            ]
+
     def test_always_tree_query_relations(self):
         c = AlwaysTreeQueryModelCategory.objects.create()
 
