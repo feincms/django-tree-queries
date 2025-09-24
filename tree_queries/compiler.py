@@ -43,7 +43,7 @@ class TreeQuery(Query):
         if not hasattr(self, "tree_fields"):
             self.tree_fields = {}
 
-    def get_compiler(self, using=None, connection=None, **kwargs):
+    def get_compiler(self, using=None, connection=None, elide_empty=True, **kwargs):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
             raise ValueError("Need either using or connection")
@@ -52,8 +52,8 @@ class TreeQuery(Query):
         # Difference: Not connection.ops.compiler, but our own compiler which
         # adds the CTE.
 
-        # **kwargs passes on elide_empty from Django 4.0 onwards
-        return TreeCompiler(self, connection, using, **kwargs)
+        # Pass elide_empty and other kwargs to TreeCompiler
+        return TreeCompiler(self, connection, using, elide_empty, **kwargs)
 
     def get_sibling_order(self):
         return self.sibling_order
@@ -379,6 +379,13 @@ class TreeCompiler(SQLCompiler):
 
         return rank_table_sql, rank_table_params
 
+    def _is_part_of_combinator(self):
+        """
+        This method is no longer used as we handle combinators differently.
+        Kept for backward compatibility.
+        """
+        return False
+
     def as_sql(self, *args, **kwargs):
         # Try detecting if we're used in a EXISTS(1 as "a") subquery like
         # Django's sql.Query.exists() generates. If we detect such a query
@@ -390,6 +397,31 @@ class TreeCompiler(SQLCompiler):
             and (ann := self.query.annotations)
             and ann == {"a": Value(1)}
         ):
+            return super().as_sql(*args, **kwargs)
+
+        # Check if this query is part of a combinator operation (union/intersection/difference)
+        # If so, we need to skip tree field generation entirely and use regular SQL compilation
+        if hasattr(self.query, 'combinator') and self.query.combinator:
+            # For combinator queries, we also need to clean up any tree-related extra fields
+            # that might have been added previously, and clear tree-related ordering
+            if hasattr(self.query, 'extra_select'):
+                # Remove tree fields from extra_select
+                tree_fields = {'tree_depth', 'tree_path', 'tree_ordering'}
+                for field_name in list(self.query.extra_select.keys()):
+                    if field_name in tree_fields:
+                        del self.query.extra_select[field_name]
+            
+            # Clear tree-related extra tables
+            if hasattr(self.query, 'extra_tables') and '__tree' in self.query.extra_tables:
+                self.query.extra_tables = tuple(t for t in self.query.extra_tables if t != '__tree')
+            
+            # Clear tree-related extra where clauses
+            if hasattr(self.query, 'extra_where'):
+                self.query.extra_where = [w for w in self.query.extra_where if '__tree' not in w]
+            
+            # Clear any tree-related ordering
+            self.query.clear_ordering(force=True)
+            
             return super().as_sql(*args, **kwargs)
 
         # The general idea is that if we have a summary query (e.g. .count())
@@ -558,6 +590,122 @@ class TreeCompiler(SQLCompiler):
             if expression.sql in tree_fields:
                 converters[i] = ([converter], expression)
         return converters
+
+    def get_combinator_sql(self, combinator, all):
+        """
+        Override combinator SQL generation to handle tree fields properly.
+        
+        When using union/intersection/difference with tree queries, we need to
+        handle tree fields specially since they are computed fields that don't
+        exist as real model fields.
+        
+        The approach is to remove tree fields from the normalization process.
+        """
+        # Tree field names that should be excluded from combinator operations
+        TREE_FIELD_NAMES = {'tree_depth', 'tree_path', 'tree_ordering'}
+        
+        # Get the current values that would be applied to sub-queries
+        extra_select_keys = set(self.query.extra_select.keys())
+        values_select = self.query.values_select
+        annotation_select_keys = set(self.query.annotation_select.keys())
+        
+        # Check if any tree fields are present
+        tree_fields_present = (
+            TREE_FIELD_NAMES & extra_select_keys or
+            any(name in TREE_FIELD_NAMES for name in values_select) or
+            TREE_FIELD_NAMES & annotation_select_keys
+        )
+        
+        if tree_fields_present:
+            # We have tree fields, so we need to handle this specially
+            # Create clean queries without tree fields
+            features = self.connection.features
+            compilers = []
+            
+            for query in self.query.combined_queries:
+                # Clone the query and ensure it's a regular Query (not TreeQuery)
+                cloned_query = query.clone()
+                if hasattr(cloned_query, '__class__') and cloned_query.__class__.__name__ == 'TreeQuery':
+                    cloned_query.__class__ = Query
+                
+                # Clear any tree-related ordering that might have been set
+                cloned_query.clear_ordering(force=True)
+                
+                # Get a regular compiler for this query
+                compiler = cloned_query.get_compiler(self.using, self.connection, self.elide_empty)
+                compilers.append(compiler)
+            
+            # Check for slicing and ordering restrictions (copied from Django's implementation)
+            if not features.supports_slicing_ordering_in_compound:
+                for compiler in compilers:
+                    if compiler.query.is_sliced:
+                        from django.db import DatabaseError
+                        raise DatabaseError(
+                            "LIMIT/OFFSET not allowed in subqueries of compound statements."
+                        )
+                    if compiler.get_order_by():
+                        from django.db import DatabaseError
+                        raise DatabaseError(
+                            "ORDER BY not allowed in subqueries of compound statements."
+                        )
+            elif self.query.is_sliced and combinator == "union":
+                for compiler in compilers:
+                    compiler.elide_empty = False
+            
+            # Generate SQL for each part without tree fields
+            parts = ()
+            for compiler in compilers:
+                try:
+                    # Generate SQL for this sub-query
+                    part_sql, part_args = compiler.as_sql(with_col_aliases=True)
+                    if compiler.query.combinator:
+                        # Handle nested combinators
+                        if not features.supports_parentheses_in_compound:
+                            part_sql = "SELECT * FROM ({})".format(part_sql)
+                        elif (
+                            self.query.subquery
+                            or not features.supports_slicing_ordering_in_compound
+                        ):
+                            part_sql = "({})".format(part_sql)
+                    elif (
+                        self.query.subquery
+                        and features.supports_slicing_ordering_in_compound
+                    ):
+                        part_sql = "({})".format(part_sql)
+                    parts += ((part_sql, part_args),)
+                except Exception:  # Django's EmptyResultSet would be caught here
+                    # Handle empty results
+                    if combinator == "union" or (combinator == "difference" and parts):
+                        continue
+                    raise
+            
+            if not parts:
+                from django.db.models.sql.compiler import EmptyResultSet
+                raise EmptyResultSet
+            
+            # Combine the parts
+            combinator_sql = self.connection.ops.set_operators[combinator]
+            if all and combinator == "union":
+                combinator_sql += " ALL"
+            
+            braces = "{}"
+            if not self.query.subquery and features.supports_slicing_ordering_in_compound:
+                braces = "({})"
+            
+            sql_parts, args_parts = zip(*parts)
+            result = [braces.format(part) for part in sql_parts]
+            
+            # Join with combinator
+            sql = (" %s " % combinator_sql).join(result)
+            params = []
+            for part_args in args_parts:
+                params.extend(part_args)
+            
+            # Return in the same format as Django's get_combinator_sql: ([sql], params)
+            return [sql], params
+        else:
+            # No tree fields present, use Django's default implementation
+            return super().get_combinator_sql(combinator, all)
 
 
 def converter(value, expression, connection, context=None):
