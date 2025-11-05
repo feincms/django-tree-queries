@@ -1,9 +1,14 @@
 import json
 
 from django import forms
-from django.contrib import messages
+from django.conf import settings
+from django.contrib import admin, messages
 from django.contrib.admin import ModelAdmin, SimpleListFilter, display, helpers
-from django.contrib.admin.options import IncorrectLookupParameters, csrf_protect_m
+from django.contrib.admin.options import (
+    IncorrectLookupParameters,
+    csrf_protect_m,
+)
+from django.core import checks
 from django.core.exceptions import ValidationError
 from django.db.models import F
 from django.http import HttpResponse
@@ -57,6 +62,18 @@ class TreeAdmin(ModelAdmin):
 
     list_display = ["collapse_column", "indented_title", "move_column"]
     list_display_links = ["indented_title"]
+
+    def check(self, **kwargs):
+        errors = super().check(**kwargs)
+        if "tree_queries" not in settings.INSTALLED_APPS:
+            errors.append(
+                checks.Error(
+                    '"tree_queries" must be in INSTALLED_APPS.',
+                    obj=self.__class__,
+                    id="tree_queries.E001",
+                )
+            )
+        return errors
 
     @csrf_protect_m
     def changelist_view(self, request, **kwargs):
@@ -120,6 +137,7 @@ class TreeAdmin(ModelAdmin):
 
     indented_title.short_description = _("title")
 
+    @admin.display(description=_("move"))
     def move_column(self, instance):
         """
         Show a ``move`` link which leads to a separate page where the move
@@ -164,8 +182,6 @@ class TreeAdmin(ModelAdmin):
             _("Choose new location"),
             options,
         )
-
-    move_column.short_description = _("move")
 
     def get_urls(self):
         """

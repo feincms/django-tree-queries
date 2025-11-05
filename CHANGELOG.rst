@@ -10,6 +10,8 @@ Next version
 - Added an example migration to the documentation for migrating from
   django-mptt to django-tree-queries. Thanks to @felixmm for providing this!
 - Avoided fetching ancestors of nodes without parents. Thanks to @felixmm!
+- Added a system check which verifies that ``"tree_queries"`` has been added to
+  ``INSTALLED_APPS`` if using the ``TreeAdmin`` model admin class.
 
 
 0.21 (2025-09-16)
