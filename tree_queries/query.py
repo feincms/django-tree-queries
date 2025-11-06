@@ -17,6 +17,30 @@ class TreeManager(models.Manager):
         queryset = super().get_queryset()
         return queryset.with_tree_fields() if self._with_tree_fields else queryset
 
+    def create(self, **kwargs):
+        """
+        Create a new object with the given kwargs, saving it to the database
+        and returning the created object.
+        
+        If the manager has with_tree_fields=True, the returned object will
+        have tree fields populated by re-querying from the database.
+        """
+        obj = super().create(**kwargs)
+        
+        # If tree fields are enabled, re-fetch the object to get tree annotations
+        if self._with_tree_fields:
+            obj = self.get(pk=obj.pk)
+        
+        return obj
+
+    def bulk_create(self, objs, batch_size=None, ignore_conflicts=False, update_conflicts=False, update_fields=None, unique_fields=None):
+        """
+        Create multiple objects efficiently. Note that tree fields will NOT be 
+        available on the returned objects even when with_tree_fields=True,
+        since bulk operations don't return individual annotated instances.
+        """
+        return super().bulk_create(objs, batch_size, ignore_conflicts, update_conflicts, update_fields, unique_fields)
+
 
 class TreeQuerySet(models.QuerySet):
     def with_tree_fields(self, tree_fields=True):  # noqa: FBT002
