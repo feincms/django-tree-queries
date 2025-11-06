@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.22 (2025-11-06)
+~~~~~~~~~~~~~~~~~
+
 - Made the new ``tree_queries.admin`` module importable when
   ``django-js-asset`` isn't installed so that ``compilemessages`` and other
   tools automatically importing this module are allowed to work.
