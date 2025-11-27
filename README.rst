@@ -111,6 +111,8 @@ Tree node with ordering among siblings
 Nodes with the same parent may be ordered among themselves. The default is to
 order siblings by their primary key but that's not always very useful.
 
+**Manual position management:**
+
 .. code-block:: python
 
     from tree_queries.models import TreeNode
@@ -121,6 +123,54 @@ order siblings by their primary key but that's not always very useful.
 
         class Meta:
             ordering = ["position"]
+
+**Automatic position management:**
+
+For automatic position management, use ``OrderableTreeNode`` which automatically
+assigns sequential position values to new nodes:
+
+.. code-block:: python
+
+    from tree_queries.models import OrderableTreeNode
+
+    class Category(OrderableTreeNode):
+        name = models.CharField(max_length=100)
+        # position field and ordering are inherited from OrderableTreeNode
+
+When creating new nodes without an explicit position, ``OrderableTreeNode``
+automatically assigns a position value 10 units higher than the maximum position
+among siblings. The increment of 10 (rather than 1) makes it explicit that the
+position values themselves have no inherent meaning - they are purely for relative
+ordering, not a sibling counter or index.
+
+If you need to customize the Meta class (e.g., to add verbose names or additional
+ordering fields), inherit from ``OrderableTreeNode.Meta``:
+
+.. code-block:: python
+
+    from tree_queries.models import OrderableTreeNode
+
+    class Category(OrderableTreeNode):
+        name = models.CharField(max_length=100)
+
+        class Meta(OrderableTreeNode.Meta):
+            verbose_name = "category"
+            verbose_name_plural = "categories"
+            # ordering = ["position"] is inherited from OrderableTreeNode.Meta
+
+.. code-block:: python
+
+    # Create nodes - positions are assigned automatically
+    root = Category.objects.create(name="Root")  # position=10
+    child1 = Category.objects.create(name="Child 1", parent=root)  # position=10
+    child2 = Category.objects.create(name="Child 2", parent=root)  # position=20
+    child3 = Category.objects.create(name="Child 3", parent=root)  # position=30
+
+    # Manual reordering is still possible
+    child3.position = 15  # Move between child1 and child2
+    child3.save()
+
+This approach is identical to the pattern used in feincms3's ``AbstractPage``.
 
 
 Add custom methods to queryset
@@ -538,16 +588,63 @@ To use the admin functionality, install with the ``admin`` extra:
 Usage
 -----
 
+**With automatic position management:**
+
+For the best admin experience with proper ordering, use ``OrderableTreeNode``:
+
 .. code-block:: python
 
     from django.contrib import admin
     from tree_queries.admin import TreeAdmin
-    from .models import Category
+    from tree_queries.models import OrderableTreeNode
+
+    class Category(OrderableTreeNode):
+        name = models.CharField(max_length=100)
+        # position field and ordering are inherited from OrderableTreeNode
 
     @admin.register(Category)
     class CategoryAdmin(TreeAdmin):
-        list_display = [*TreeAdmin.list_display, "name", "is_active"]
-        position_field = "position"  # Optional: field used for sibling ordering
+        list_display = [*TreeAdmin.list_display, "name"]
+        position_field = "position"  # Enables sibling ordering controls
+
+**With manual position management:**
+
+If you prefer to manage positions yourself:
+
+.. code-block:: python
+
+    from django.contrib import admin
+    from django.db.models import Max
+    from tree_queries.admin import TreeAdmin
+    from tree_queries.models import TreeNode
+
+    class Category(TreeNode):
+        name = models.CharField(max_length=100)
+        position = models.PositiveIntegerField(default=0)
+
+        class Meta:
+            ordering = ["position"]
+
+        def save(self, *args, **kwargs):
+            # Custom position logic here
+            if not self.position:
+                self.position = (
+                    10
+                    + (
+                        self.__class__._default_manager.filter(parent_id=self.parent_id)
+                        .order_by()
+                        .aggregate(p=Max("position"))["p"]
+                        or 0
+                    )
+                )
+            super().save(*args, **kwargs)
+
+        save.alters_data = True
+
+    @admin.register(Category)
+    class CategoryAdmin(TreeAdmin):
+        list_display = [*TreeAdmin.list_display, "name"]
+        position_field = "position"
 
 The ``TreeAdmin`` provides:
 
@@ -617,5 +714,6 @@ maintain their relative order after the migration.
 
 Note that the position field is used purely for ordering siblings and is not an
 index. By default, django-tree-queries' admin interface starts with a position
-value of 10 and increments by 10 (10, 20, 30, etc.) to make it clear that the
-value is not an index, but just something to order siblings by.
+value of 10 and increments by 10 (10, 20, 30, etc.) to make it explicit that the
+position values themselves have no inherent meaning - they are purely for relative
+ordering, not a sibling counter or index.

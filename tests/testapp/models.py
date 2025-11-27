@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 
-from tree_queries.models import TreeNode
+from tree_queries.models import OrderableTreeNode, TreeNode
 from tree_queries.query import TreeQuerySet
 
 
@@ -139,3 +139,10 @@ class OneToOneRelatedOrder(models.Model):
 
     def __str__(self):
         return ""
+
+
+class OrderedModel(OrderableTreeNode):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
