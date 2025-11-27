@@ -4,6 +4,13 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.23 (2025-11-27)
+~~~~~~~~~~~~~~~~~
+
+- Added a new ``OrderableTreeNode`` base class which includes a position field
+  for ordering among siblings, and started recommending it.
+
+
 0.22 (2025-11-06)
 ~~~~~~~~~~~~~~~~~
 
