@@ -62,7 +62,8 @@ class TestTreeQueries:
         tree = self.create_tree()
         # Ordering should be deterministic
         child2_2 = (
-            Model.objects.with_tree_fields()
+            Model.objects
+            .with_tree_fields()
             .order_siblings_by("order", "pk")
             .get(pk=tree.child2_2.pk)
         )
