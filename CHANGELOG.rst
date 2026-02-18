@@ -16,6 +16,9 @@ Next version
   ``instance.refresh_from_db()``.
 - Added documentation on how to access tree fields in ``.values()`` calls using
   ``RawSQL``, including caveats about database compatibility and stability.
+- Added documentation clarifying ``select_related()`` support: it works when
+  querying from the tree model but not when querying from related models.
+  Included workarounds using ``prefetch_related()`` and manual fetching.
 
 0.23 (2025-11-27)
 ~~~~~~~~~~~~~~~~~

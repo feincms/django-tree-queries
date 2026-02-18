@@ -370,10 +370,14 @@ before the recursive CTE processes relationships, dramatically improving perform
 for large datasets compared to using regular ``filter()`` after ``with_tree_fields()``.
 Best used for selecting complete trees or tree sections rather than scattered nodes.
 
-Note that the tree queryset doesn't support all types of queries Django
-supports. For example, updating all descendants directly isn't supported. The
-reason for that is that the recursive CTE isn't added to the UPDATE query
-correctly. Workarounds often include moving the tree query into a subquery:
+**Limitations and workarounds**
+
+The tree queryset doesn't support all types of queries Django supports.
+
+**UPDATE queries on tree querysets:**
+
+Updating all descendants directly isn't supported because the recursive CTE isn't
+added to the UPDATE query correctly. Use a subquery workaround instead:
 
 .. code-block:: python
 
@@ -382,6 +386,50 @@ correctly. Workarounds often include moving the tree query into a subquery:
 
     # Use this workaround instead:
     Node.objects.filter(pk__in=node.descendants()).update(is_active=False)
+
+**select_related() with tree fields:**
+
+Using ``select_related()`` works when querying **from** the tree model to fetch
+related objects. However, querying from a related model and trying to get tree
+fields on the tree model via ``select_related()`` is not supported.
+
+.. code-block:: python
+
+    # This works - tree model is the base, select_related fetches the category
+    nodes = Node.objects.with_tree_fields().select_related("category")
+    for node in nodes:
+        print(node.tree_depth, node.category.name)
+
+    # This doesn't work - ReferenceModel is the base, tree fields won't be present
+    # on the related Node objects
+    references = ReferenceModel.objects.select_related("tree_field")
+    for ref in references:
+        # ref.tree_field.tree_depth  # AttributeError - tree fields not available
+
+**Workaround:** Query from the tree model and use ``prefetch_related()`` or
+``Prefetch()`` to fetch the related objects:
+
+.. code-block:: python
+
+    from django.db.models import Prefetch
+
+    # Approach 1: Query from tree model, prefetch references
+    nodes = Node.objects.with_tree_fields().prefetch_related("referencemodel_set")
+    for node in nodes:
+        print(node.tree_depth)
+        for ref in node.referencemodel_set.all():
+            print(f"  Reference: {ref.id}")
+
+    # Approach 2: Query references, then fetch tree nodes separately
+    references = ReferenceModel.objects.all()
+    tree_node_ids = [ref.tree_field_id for ref in references]
+    nodes_by_id = {
+        node.pk: node
+        for node in Node.objects.with_tree_fields().filter(pk__in=tree_node_ids)
+    }
+    for ref in references:
+        node = nodes_by_id[ref.tree_field_id]
+        print(f"Reference {ref.id}: tree depth = {node.tree_depth}")
 
 
 Breadth-first search
