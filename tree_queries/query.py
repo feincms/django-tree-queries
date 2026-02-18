@@ -79,6 +79,18 @@ class TreeQuerySet(models.QuerySet):
     def tree_fields(self, **tree_fields):
         self.query.__class__ = TreeQuery
         self.query._setup_query()
+
+        # Validate that primary key field is not used
+        # Using the pk field causes ambiguous column references in the SQL
+        # See https://github.com/matthiask/django-tree-queries/issues/84
+        pk_field_name = self.model._meta.pk.name
+        for field_name in tree_fields.values():
+            if field_name == pk_field_name:
+                raise ValueError(
+                    f"Cannot use primary key field '{pk_field_name}' in tree_fields(). "
+                    f"The primary key is already available in tree_path."
+                )
+
         self.query.tree_fields = tree_fields
         return self
 

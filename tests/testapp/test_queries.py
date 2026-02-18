@@ -1073,3 +1073,17 @@ class TestTreeQueries:
 
         child2_2 = next(obj for obj in results if obj.name == "2-2")
         assert child2_2.tree_names == ["root", "2", "2-2"]
+
+    def test_tree_fields_with_pk_field(self):
+        """Test that using the primary key field in tree_fields raises a helpful error"""
+        # Create a simple tree using UnorderedModel (which has 'id' as pk)
+        u0 = UnorderedModel.objects.create(name="u0")
+        UnorderedModel.objects.create(name="u1", parent=u0)
+        UnorderedModel.objects.create(name="u2", parent=u0)
+
+        # Using 'id' (the pk field) should raise a clear ValueError
+        # See https://github.com/matthiask/django-tree-queries/issues/84
+        with pytest.raises(
+            ValueError, match="Cannot use primary key field 'id' in tree_fields"
+        ):
+            UnorderedModel.objects.tree_fields(tree_ids="id")

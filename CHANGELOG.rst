@@ -4,6 +4,15 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+**Breaking changes:**
+
+- ``tree_fields()`` now raises ``ValueError`` when attempting to use the model's
+  primary key field (previously caused ``ProgrammingError`` on PostgreSQL with
+  ambiguous column error). If you were catching ``ProgrammingError`` for this
+  case, catch ``ValueError`` instead.
+
+**Bug fixes and improvements:**
+
 - Fixed a bug where the ``{% recursetree %}`` template tag would show stale
   data on subsequent renders because the children cache was stored on the node
   instance instead of in ``context.render_context``.
