@@ -19,6 +19,9 @@ Next version
 - Added documentation clarifying ``select_related()`` support: it works when
   querying from the tree model but not when querying from related models.
   Included workarounds using ``prefetch_related()`` and manual fetching.
+- Added note in the django-mptt migration section about ``add_related_count()``
+  not being directly supported, with a link to mptt-labeled GitHub issues for
+  community-contributed solutions.
 
 0.23 (2025-11-27)
 ~~~~~~~~~~~~~~~~~

@@ -866,3 +866,11 @@ index. By default, django-tree-queries' admin interface starts with a position
 value of 10 and increments by 10 (10, 20, 30, etc.) to make it explicit that the
 position values themselves have no inherent meaning - they are purely for relative
 ordering, not a sibling counter or index.
+
+**Replacing add_related_count():**
+
+django-mptt's ``add_related_count()`` method for cumulative related object counts
+is not directly supported in django-tree-queries. The implementation would be
+complex and database-specific. For community-contributed solutions and discussion
+of alternative approaches, see `mptt-related issues on GitHub
+<https://github.com/matthiask/django-tree-queries/issues?q=label:mptt>`_.
