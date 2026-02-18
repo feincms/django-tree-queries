@@ -4,6 +4,10 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Fixed a bug where the ``{% recursetree %}`` template tag would show stale
+  data on subsequent renders because the children cache was stored on the node
+  instance instead of in ``context.render_context``.
+
 0.23 (2025-11-27)
 ~~~~~~~~~~~~~~~~~
 

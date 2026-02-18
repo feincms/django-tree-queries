@@ -140,39 +140,41 @@ class RecurseTreeNode(template.Node):
     def __init__(self, nodelist, queryset_var):
         self.nodelist = nodelist
         self.queryset_var = queryset_var
-        self._cached_children = None
 
-    def _cache_tree_children(self, queryset):
+    def _cache_tree_children(self, context, queryset):
         """
         Cache children relationships for all nodes in the queryset.
         This avoids additional database queries and respects the queryset boundaries.
+        Uses render_context for thread safety and to avoid stale data across renders.
         """
-        if self._cached_children is not None:
-            return self._cached_children
+        if self in context.render_context:
+            return context.render_context[self]
 
-        self._cached_children = {}
+        cached_children = {}
 
         # Group nodes by their parent_id for efficient lookup
         for node in queryset:
             parent_id = getattr(node, "parent_id", None)
-            if parent_id not in self._cached_children:
-                self._cached_children[parent_id] = []
-            self._cached_children[parent_id].append(node)
+            if parent_id not in cached_children:
+                cached_children[parent_id] = []
+            cached_children[parent_id].append(node)
 
         # Sort children by tree_ordering if available, otherwise by pk
-        for children_list in self._cached_children.values():
+        for children_list in cached_children.values():
             if children_list and hasattr(children_list[0], "tree_ordering"):
                 children_list.sort(key=lambda x: (x.tree_ordering, x.pk))
             else:
                 children_list.sort(key=lambda x: x.pk)
 
-        return self._cached_children
+        context.render_context[self] = cached_children
+        return cached_children
 
-    def _get_children_from_cache(self, node):
+    def _get_children_from_cache(self, context, node):
         """Get children of a node from the cached children, not from database"""
-        if self._cached_children is None:
+        cached = context.render_context.get(self)
+        if cached is None:
             return []
-        return self._cached_children.get(node.pk, [])
+        return cached.get(node.pk, [])
 
     def _render_node(self, context, node):
         """Recursively render a node and its children from the cached queryset"""
@@ -180,7 +182,7 @@ class RecurseTreeNode(template.Node):
         context.push()
 
         # Get children from cache (only nodes that were in the original queryset)
-        children = self._get_children_from_cache(node)
+        children = self._get_children_from_cache(context, node)
         for child in children:
             bits.append(self._render_node(context, child))
 
@@ -204,7 +206,7 @@ class RecurseTreeNode(template.Node):
 
         # Convert to list to avoid re-evaluation and cache the children relationships
         queryset_list = list(queryset)
-        self._cache_tree_children(queryset_list)
+        self._cache_tree_children(context, queryset_list)
 
         # Get root nodes (nodes without parents or whose parents are not in the queryset)
         queryset_pks = {node.pk for node in queryset_list}

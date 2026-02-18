@@ -2,12 +2,11 @@ from types import SimpleNamespace
 
 import pytest
 from django import template
-from django.template import Context, Template, Variable
+from django.template import Context, Template
 from django.test import TestCase
 
 from testapp.models import Model, UnorderedModel
 from tree_queries.templatetags.tree_queries import (
-    RecurseTreeNode,
     previous_current_next,
     tree_info,
     tree_item_iterator,
@@ -733,23 +732,26 @@ class TestTemplateTags:
         assert "u1" in result
         assert "u2" in result
 
-    def test_recursetree_get_children_from_cache_edge_cases(self):
-        """Test edge cases in _get_children_from_cache method"""
+    def test_recursetree_reflects_database_changes_on_rerender(self):
+        """Test that recursetree shows updated data after database changes (issue #102)"""
         tree = self.create_tree()
-        Model.objects.with_tree_fields()
 
-        # Create a RecurseTreeNode instance
+        t = Template("""
+        {% load tree_queries %}
+        {% recursetree items %}
+            <div>{{ node.name }}{{ children }}</div>
+        {% endrecursetree %}
+        """)
 
-        queryset_var = Variable("items")
-        nodelist = []  # Empty nodelist for testing
-        recurse_node = RecurseTreeNode(nodelist, queryset_var)
+        result1 = t.render(Context({"items": Model.objects.with_tree_fields()}))
+        assert "1-1" in result1
 
-        # Test when cache is None
-        assert recurse_node._get_children_from_cache(tree.root) == []
+        tree.child1_1.name = "updated-child"
+        tree.child1_1.save()
 
-        # Test when cache exists but node not in cache
-        recurse_node._cached_children = {}
-        assert recurse_node._get_children_from_cache(tree.root) == []
+        result2 = t.render(Context({"items": Model.objects.with_tree_fields()}))
+        assert "updated-child" in result2
+        assert "1-1" not in result2
 
     def test_tree_item_iterator_edge_cases(self):
         """Test edge cases in tree_item_iterator"""
