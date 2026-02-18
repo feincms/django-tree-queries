@@ -14,6 +14,8 @@ Next version
   present on queries using ``with_tree_fields()`` and are NOT available after
   ``Model.objects.create()``, ``instance.save()``, or
   ``instance.refresh_from_db()``.
+- Added documentation on how to access tree fields in ``.values()`` calls using
+  ``RawSQL``, including caveats about database compatibility and stability.
 
 0.23 (2025-11-27)
 ~~~~~~~~~~~~~~~~~

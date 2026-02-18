@@ -410,6 +410,54 @@ If you only want nodes from the top two levels:
     )
 
 
+Using tree fields with values()
+--------------------------------
+
+By default, ``.values()`` only returns model fields, not tree fields. If you need
+tree fields in a ``.values()`` call, you can access them using ``RawSQL``:
+
+.. code-block:: python
+
+    from django.db.models.expressions import RawSQL
+
+    # Include tree fields in values() output
+    data = Node.objects.with_tree_fields().values(
+        "name",
+        tree_depth=RawSQL("tree_depth", ()),
+        tree_path=RawSQL("tree_path", ()),
+    )
+    # Returns: [{'name': 'root', 'tree_depth': 0, 'tree_path': [1]}, ...]
+
+**Important caveats:**
+
+- **PostgreSQL only**: ``tree_path`` returns a proper array only on PostgreSQL.
+  Other databases return the internal string representation used by
+  django-tree-queries (subject to change).
+- **Not guaranteed stable**: The internal representation of tree fields may change
+  in future versions. Avoid relying on the exact format of these values in
+  application logic.
+- **Performance**: Using ``.values()`` with tree fields doesn't provide performance
+  benefits over regular querysets with tree fields. Use this only when you
+  specifically need dictionary output.
+
+If you need tree field values for application logic, prefer accessing them as
+attributes on model instances rather than through ``.values()``:
+
+.. code-block:: python
+
+    # Preferred approach
+    nodes = Node.objects.with_tree_fields()
+    for node in nodes:
+        depth = node.tree_depth
+        path = node.tree_path  # Consistent across all databases
+
+    # Only use RawSQL with values() when you need dictionary output
+    data = Node.objects.with_tree_fields().values(
+        "name",
+        tree_depth=RawSQL("tree_depth", ()),
+    )
+
+
 Aggregating ancestor fields
 ---------------------------
 
