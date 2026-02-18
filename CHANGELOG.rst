@@ -22,6 +22,12 @@ Next version
 - Added note in the django-mptt migration section about ``add_related_count()``
   not being directly supported, with a link to mptt-labeled GitHub issues for
   community-contributed solutions.
+- Added documentation for union, intersection, and difference operations not
+  being supported with tree querysets, with a workaround using regular querysets
+  then adding tree fields.
+- Added documentation for limiting tree depth using ``.extra()`` and limiting
+  children per node using model validation, with examples for checking depth
+  programmatically.
 
 0.23 (2025-11-27)
 ~~~~~~~~~~~~~~~~~

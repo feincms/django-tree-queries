@@ -370,11 +370,13 @@ before the recursive CTE processes relationships, dramatically improving perform
 for large datasets compared to using regular ``filter()`` after ``with_tree_fields()``.
 Best used for selecting complete trees or tree sections rather than scattered nodes.
 
-**Limitations and workarounds**
+Limitations and workarounds
+---------------------------
 
 The tree queryset doesn't support all types of queries Django supports.
 
-**UPDATE queries on tree querysets:**
+UPDATE queries on tree querysets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Updating all descendants directly isn't supported because the recursive CTE isn't
 added to the UPDATE query correctly. Use a subquery workaround instead:
@@ -387,7 +389,8 @@ added to the UPDATE query correctly. Use a subquery workaround instead:
     # Use this workaround instead:
     Node.objects.filter(pk__in=node.descendants()).update(is_active=False)
 
-**select_related() with tree fields:**
+select_related() with tree fields
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Using ``select_related()`` works when querying **from** the tree model to fetch
 related objects. However, querying from a related model and trying to get tree
@@ -430,6 +433,104 @@ fields on the tree model via ``select_related()`` is not supported.
     for ref in references:
         node = nodes_by_id[ref.tree_field_id]
         print(f"Reference {ref.id}: tree depth = {node.tree_depth}")
+
+Union, intersection, and difference operations
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Set operations like ``union()``, ``intersection()``, and ``difference()`` are not
+currently supported with tree querysets due to how Django passes the ``elide_empty``
+parameter. Attempting to use these operations will result in errors.
+
+.. code-block:: python
+
+    # This doesn't work:
+    qs1 = Node.objects.with_tree_fields().filter(name__startswith="A")
+    qs2 = Node.objects.with_tree_fields().filter(name__startswith="B")
+    combined = qs1.union(qs2)  # Will raise an error
+
+**Workaround:** Use regular Django querysets without tree fields, then add tree
+fields after the set operation:
+
+.. code-block:: python
+
+    # Perform the set operation without tree fields
+    qs1 = Node.objects.filter(name__startswith="A")
+    qs2 = Node.objects.filter(name__startswith="B")
+    combined_ids = qs1.union(qs2).values_list("pk", flat=True)
+
+    # Then fetch with tree fields
+    result = Node.objects.with_tree_fields().filter(pk__in=combined_ids)
+
+For more details and discussion about adding support for these operations, see
+`GitHub issue #55 <https://github.com/matthiask/django-tree-queries/issues/55>`_.
+
+Limiting tree depth
+^^^^^^^^^^^^^^^^^^^
+
+To limit the depth of the tree returned by a query, use ``.extra()`` with a
+``WHERE`` clause on the ``tree_depth`` field:
+
+.. code-block:: python
+
+    # Get only nodes up to depth 2 (root is depth 0)
+    nodes = Node.objects.with_tree_fields().extra(
+        where=["__tree.tree_depth <= %s"],
+        params=[2],
+    )
+
+    # Get nodes within a depth range
+    nodes = Node.objects.with_tree_fields().extra(
+        where=["__tree.tree_depth BETWEEN %s AND %s"],
+        params=[1, 3],  # Only depths 1, 2, and 3
+    )
+
+Limiting children per node
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To enforce a maximum number of children per node, implement validation in your
+model's ``clean()`` method:
+
+.. code-block:: python
+
+    from django.core.exceptions import ValidationError
+
+    class Node(TreeNode):
+        def clean(self):
+            super().clean()
+            max_children = 10
+
+            # Check if this would exceed the limit
+            if self.parent_id:
+                sibling_count = (
+                    Node.objects
+                    .filter(parent_id=self.parent_id)
+                    .exclude(pk=self.pk)
+                    .count()
+                )
+                if sibling_count >= max_children:
+                    raise ValidationError(
+                        f"Parent already has {sibling_count} children "
+                        f"(maximum {max_children})"
+                    )
+
+Checking tree depth in code
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you need to validate or check depth without tree fields:
+
+.. code-block:: python
+
+    # Check depth by counting ancestors
+    depth = node.ancestors().count()
+
+    # Or check depth manually by traversing parent chain
+    def get_depth(node):
+        depth = 0
+        current = node
+        while current.parent_id:
+            depth += 1
+            current = current.parent
+        return depth
 
 
 Breadth-first search
