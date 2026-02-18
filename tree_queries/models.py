@@ -48,9 +48,8 @@ class TreeNode(models.Model):
             self.parent_id
             and self.pk
             and (
-                self.__class__._default_manager.ancestors(
-                    self.parent_id, include_self=True
-                )
+                self.__class__._default_manager
+                .ancestors(self.parent_id, include_self=True)
                 .filter(pk=self.pk)
                 .exists()
             )
@@ -93,7 +92,8 @@ class OrderableTreeNode(TreeNode):
         """
         if not self.position:
             self.position = 10 + (
-                self.__class__._default_manager.filter(parent_id=self.parent_id)
+                self.__class__._default_manager
+                .filter(parent_id=self.parent_id)
                 .order_by()
                 .aggregate(p=Max("position"))["p"]
                 or 0
