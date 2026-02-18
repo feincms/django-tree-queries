@@ -29,7 +29,7 @@ pygments_style = "sphinx"
 todo_include_todos = False
 
 html_theme = "alabaster"
-html_static_path = ["_static"]
+# html_static_path = ["_static"]  # Commented out until needed
 htmlhelp_basename = project_slug + "doc"
 
 latex_elements = {

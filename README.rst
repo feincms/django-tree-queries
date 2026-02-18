@@ -675,7 +675,7 @@ Add ``tree_queries`` to your ``INSTALLED_APPS`` setting:
 
 Then load the template tags in your template:
 
-.. code-block:: html
+.. code-block:: html+django
 
     {% load tree_queries %}
 
@@ -687,7 +687,7 @@ The ``tree_info`` filter provides detailed information about each node's
 position in the tree structure. It's useful when you need fine control over
 the tree rendering.
 
-.. code-block:: html
+.. code-block:: html+django
 
     {% load tree_queries %}
     <ul>
@@ -707,7 +707,7 @@ contains:
 
 Example showing ancestor information:
 
-.. code-block:: html
+.. code-block:: html+django
 
     {% for node, structure in nodes|tree_info %}
         {{ node.name }}
@@ -726,7 +726,7 @@ nodes within the provided queryset and doesn't make additional database queries.
 
 Basic usage:
 
-.. code-block:: html
+.. code-block:: html+django
 
     {% load tree_queries %}
     <ul>
@@ -748,7 +748,7 @@ The ``recursetree`` tag provides these context variables within the template:
 
 Using ``is_leaf`` for conditional rendering:
 
-.. code-block:: html
+.. code-block:: html+django
 
     {% recursetree nodes %}
         <div class="{% if is_leaf %}leaf-node{% else %}branch-node{% endif %}">
@@ -763,7 +763,7 @@ Using ``is_leaf`` for conditional rendering:
 
 Advanced example with depth information:
 
-.. code-block:: html
+.. code-block:: html+django
 
     {% recursetree nodes %}
         <div class="node depth-{{ node.tree_depth }}"
@@ -802,7 +802,7 @@ When using these limited querysets:
 
 Example with depth-limited queryset:
 
-.. code-block:: html
+.. code-block:: html+django
 
     <!-- Template -->
     {% recursetree limited_nodes %}
