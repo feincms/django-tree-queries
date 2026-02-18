@@ -28,6 +28,9 @@ Next version
 - Added documentation for limiting tree depth using ``.extra()`` and limiting
   children per node using model validation, with examples for checking depth
   programmatically.
+- Added documentation about limitations with complex aggregations and subqueries
+  due to top-down CTE construction, with pointers to django-cte for more complex
+  requirements.
 
 0.23 (2025-11-27)
 ~~~~~~~~~~~~~~~~~

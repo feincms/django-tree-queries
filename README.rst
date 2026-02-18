@@ -532,6 +532,43 @@ If you need to validate or check depth without tree fields:
             current = current.parent
         return depth
 
+Complex aggregations and subqueries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The recursive CTE used by django-tree-queries builds the tree top-down from root
+nodes to descendants. This makes certain operations, like aggregating values
+bottom-up (from descendants to ancestors) or using tree fields in complex
+subqueries, difficult or impossible.
+
+.. code-block:: python
+
+    # This doesn't work - can't use tree fields in subqueries with OuterRef
+    Branch.objects.annotate(
+        descendant_sum=Subquery(
+            Branch.objects.descendants(of=OuterRef('pk')).aggregate(Sum('amount'))
+        )
+    )
+
+**Workaround for small trees:** Load the tree into memory and compute in Python:
+
+.. code-block:: python
+
+    # For small trees, load root nodes and calculate in Python
+    roots = Branch.objects.filter(parent=None)
+    for root in roots:
+        descendants = root.descendants(include_self=True)
+        total = sum(node.amount for node in descendants)
+        # Use the total...
+
+**For complex query requirements:** If you need extensive CTE customization,
+subqueries with tree fields, or bottom-up aggregations, consider using
+`django-cte <https://github.com/dimagi/django-cte>`_ which provides more control
+over recursive CTE construction, or evaluate whether a different tree storage
+approach (like django-treebeard with nested sets) better fits your needs.
+
+For discussion of this limitation, see `GitHub issue #75
+<https://github.com/matthiask/django-tree-queries/issues/75>`_.
+
 
 Breadth-first search
 --------------------
