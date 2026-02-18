@@ -10,6 +10,10 @@ Next version
 - Added Python 3.14 and Django 6.0 to the CI matrix; dropped intermediate
   non-LTS versions (Django 4.1, 5.0, 5.1 and Python 3.11) while retaining
   old-but-still-used versions (Python 3.8, Django 3.2).
+- Added documentation clarifying when tree fields are available: they are only
+  present on queries using ``with_tree_fields()`` and are NOT available after
+  ``Model.objects.create()``, ``instance.save()``, or
+  ``instance.refresh_from_db()``.
 
 0.23 (2025-11-27)
 ~~~~~~~~~~~~~~~~~

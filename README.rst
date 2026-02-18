@@ -281,6 +281,59 @@ may be fine for your use case consider adding an explicit ordering field:
             ordering = ["position"]
 
 
+When are tree fields available?
+--------------------------------
+
+Tree fields (``tree_depth``, ``tree_path``, ``tree_ordering``) are only available
+on objects returned by queries that use ``with_tree_fields()`` or a manager
+configured with ``with_tree_fields=True``. They are **NOT** available after
+``Model.objects.create()``, ``instance.save()``, or ``instance.refresh_from_db()``.
+
+Why? Tree fields are calculated by the recursive CTE at query time and are not
+stored in the database. They only exist as annotations on the queryset results.
+
+.. code-block:: python
+
+    # Tree fields are NOT available after creation
+    node = Node.objects.create(name="New Node", parent=root)
+    # node.tree_depth  # AttributeError: 'Node' object has no attribute 'tree_depth'
+
+    # refresh_from_db() only updates database fields, not tree fields
+    node.refresh_from_db()
+    # node.tree_depth  # Still AttributeError
+
+    # To get tree fields, re-query the object with with_tree_fields()
+    node = Node.objects.with_tree_fields().get(pk=node.pk)
+    print(node.tree_depth)  # Now it works! e.g., 1
+
+    # Or use a manager with tree fields enabled by default
+    class Node(TreeNode):
+        name = models.CharField(max_length=100)
+        objects = TreeQuerySet.as_manager(with_tree_fields=True)
+
+    # Now tree fields are available on all queries automatically
+    node = Node.objects.get(pk=some_pk)
+    print(node.tree_depth)  # Works!
+
+    # But still not after create/save/refresh_from_db
+    new_node = Node.objects.create(name="Another")
+    # new_node.tree_depth  # Still AttributeError - need to re-query
+
+**Common pattern when creating nodes:**
+
+.. code-block:: python
+
+    # Create a new node
+    new_node = Node.objects.create(name="New Child", parent=parent_node)
+
+    # Re-query to get tree fields if you need them
+    new_node = Node.objects.with_tree_fields().get(pk=new_node.pk)
+
+    # Now you can access tree fields
+    print(f"Depth: {new_node.tree_depth}")
+    print(f"Path: {new_node.tree_path}")
+
+
 Filtering tree subsets
 ----------------------
 

@@ -41,6 +41,12 @@ Add entries for user-visible changes under the `Next version` heading in
 `CHANGELOG.rst`, following the existing style (plain RST bullet points, no
 date).
 
+## GitHub Issues
+
+Commit messages that start with `Fix #123: ` or `Fixes #123: ` will
+automatically close the referenced issue when merged to the main branch. Use
+this pattern when addressing specific issues.
+
 ## Key Concepts
 
 ### Tree fields
