@@ -178,13 +178,11 @@ class RecurseTreeNode(template.Node):
 
     def _render_node(self, context, node):
         """Recursively render a node and its children from the cached queryset"""
-        bits = []
         context.push()
 
         # Get children from cache (only nodes that were in the original queryset)
         children = self._get_children_from_cache(context, node)
-        for child in children:
-            bits.append(self._render_node(context, child))
+        bits = [self._render_node(context, child) for child in children]
 
         # Set context variables that templates can access
         context["node"] = node
