@@ -18,8 +18,8 @@ from django.utils.translation import gettext_lazy as _
 
 
 __all__ = (
-    "TreeAdmin",
     "AncestorFilter",
+    "TreeAdmin",
 )
 
 
@@ -118,9 +118,7 @@ class TreeAdmin(ModelAdmin):
         """
         Use Unicode box-drawing characters to visualize the tree hierarchy.
         """
-        box_drawing = []
-        for _i in range(instance.tree_depth - 1):
-            box_drawing.append('<i class="l"></i>')
+        box_drawing = ['<i class="l"></i>' for _i in range(instance.tree_depth - 1)]
         if instance.tree_depth > 0:
             box_drawing.append('<i class="a"></i>')
 
