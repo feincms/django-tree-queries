@@ -282,7 +282,7 @@ class TreeCompiler(SQLCompiler):
         tree_fields = self.query.get_tree_fields()
         if tree_fields:
             model = _find_tree_model(self.query.model)
-            for _name, column in tree_fields.items():
+            for column in tree_fields.values():
                 # Only allow simple column names (no complex expressions)
                 if not isinstance(column, str):
                     return False
@@ -411,7 +411,7 @@ class TreeCompiler(SQLCompiler):
         ) or any(  # pragma: no branch
             # OK if generator is not consumed completely
             annotation.is_summary
-            for alias, annotation in self.query.annotations.items()
+            for annotation in self.query.annotations.values()
         )
         opts = _find_tree_model(self.query.model)._meta
 
