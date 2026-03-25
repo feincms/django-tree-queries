@@ -147,9 +147,6 @@ class RecurseTreeNode(template.Node):
         This avoids additional database queries and respects the queryset boundaries.
         Uses render_context for thread safety and to avoid stale data across renders.
         """
-        if self in context.render_context:
-            return context.render_context[self]
-
         cached_children = {}
 
         # Group nodes by their parent_id for efficient lookup

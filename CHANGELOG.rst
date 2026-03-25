@@ -16,6 +16,8 @@ Next version
 - Fixed a bug where the ``{% recursetree %}`` template tag would show stale
   data on subsequent renders because the children cache was stored on the node
   instance instead of in ``context.render_context``.
+- Fixed a bug where ``{% recursetree %}`` inside a ``{% for %}`` loop would
+  render only the first queryset's children for all iterations (#104).
 - Added Python 3.14 and Django 6.0 to the CI matrix; dropped intermediate
   non-LTS versions (Django 4.1, 5.0, 5.1 and Python 3.11) while retaining
   old-but-still-used versions (Python 3.8, Django 3.2).

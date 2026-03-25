@@ -773,6 +773,50 @@ class TestTemplateTags:
         assert structure["new_level"] is True
         assert "ancestors" in structure
 
+    def test_recursetree_in_for_loop_with_different_querysets(self):
+        """Test that recursetree renders correctly when used inside a for loop
+        with different querysets (issue #104).
+
+        The cache keyed on `self` (the compiled RecurseTreeNode) was populated on
+        the first iteration and returned stale data for all subsequent iterations,
+        causing children to be silently dropped.
+        """
+        # Tree A: root_a with two children
+        root_a = Model.objects.create(name="root_a")
+        child_a1 = Model.objects.create(parent=root_a, order=0, name="child_a1")
+        child_a2 = Model.objects.create(parent=root_a, order=1, name="child_a2")
+
+        # Tree B: root_b with two children
+        root_b = Model.objects.create(name="root_b")
+        child_b1 = Model.objects.create(parent=root_b, order=0, name="child_b1")
+        child_b2 = Model.objects.create(parent=root_b, order=1, name="child_b2")
+
+        qs_a = Model.objects.filter(
+            pk__in=[root_a.pk, child_a1.pk, child_a2.pk]
+        ).with_tree_fields()
+        qs_b = Model.objects.filter(
+            pk__in=[root_b.pk, child_b1.pk, child_b2.pk]
+        ).with_tree_fields()
+
+        t = Template("""
+        {% load tree_queries %}
+        {% for qs in querysets %}
+        <ul>
+        {% recursetree qs %}
+            <li>{{ node.name }}{% if children %}<ul>{{ children }}</ul>{% endif %}</li>
+        {% endrecursetree %}
+        </ul>
+        {% endfor %}
+        """)
+
+        result = t.render(Context({"querysets": [qs_a, qs_b]}))
+
+        # Both trees must render their children
+        assert "child_a1" in result
+        assert "child_a2" in result
+        assert "child_b1" in result
+        assert "child_b2" in result
+
     def test_previous_current_next_edge_cases(self):
         """Test edge cases in previous_current_next function"""
 
