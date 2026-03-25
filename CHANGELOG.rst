@@ -10,6 +10,8 @@ Next version
   primary key field (previously caused ``ProgrammingError`` on PostgreSQL with
   ambiguous column error). If you were catching ``ProgrammingError`` for this
   case, catch ``ValueError`` instead.
+- Passing an invalid type as ``sibling_order`` now raises ``TypeError`` instead
+  of ``ValueError`` because that's the more appropriate exception type.
 
 **Bug fixes and improvements:**
 

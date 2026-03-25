@@ -107,6 +107,7 @@ lint.extend-ignore = [
   "B905",
   # No line length errors
   "E501",
+  "RUF012",
 ]
 lint.per-file-ignores."*/migrat*/*" = [
   # Allow using PascalCase model names in migrations

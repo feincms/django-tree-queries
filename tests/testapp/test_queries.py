@@ -933,7 +933,7 @@ class TestTreeQueries:
         # self.assertEqual(ids[0], [""])
 
     def test_invalid_sibling_order_type(self):
-        """Test that invalid sibling order types raise ValueError"""
+        """Test that invalid sibling order types raise TypeError"""
         self.create_tree()
 
         # Create a TreeQuery directly to test the validation in get_rank_table
@@ -943,9 +943,9 @@ class TestTreeQueries:
 
         compiler = TreeCompiler(query, connections[Model.objects.db], Model.objects.db)
 
-        # This should raise ValueError during get_rank_table
+        # This should raise TypeError during get_rank_table
         with pytest.raises(
-            ValueError,
+            TypeError,
             match="Sibling order must be a string or a list or tuple of strings",
         ):
             compiler.get_rank_table()

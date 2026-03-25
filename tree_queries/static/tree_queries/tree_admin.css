@@ -166,6 +166,12 @@
   color: var(--success-fg, #28a745);
 }
 
+.move-paste {
+  display: none;
+  max-width: 6ch;
+  height: 28px;
+}
+
 /* Show paste dropdowns when in regular move mode */
 body[data-move="regular"] .move-paste {
   display: revert;
@@ -202,10 +208,4 @@ body[data-move] .move-selected .move-paste {
 
 #changelist tbody tr.move-highlight {
   background: var(--message-success-bg);
-}
-
-.move-paste {
-  display: none;
-  max-width: 6ch;
-  height: 28px;
 }
