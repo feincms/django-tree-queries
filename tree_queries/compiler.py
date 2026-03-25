@@ -521,7 +521,12 @@ class TreeCompiler(SQLCompiler):
                 # summary query or when using .values() or .values_list()
                 select={} if skip_tree_fields or self.query.values_select else select,
                 select_params=None,
-                where=["__tree.tree_pk = {db_table}.{pk}".format(**tree_params)],
+                where=[
+                    "__tree.tree_pk = {}.{}".format(
+                        self.quote_name_unless_alias(tree_params["db_table"]),
+                        qn(tree_params["pk"]),
+                    )
+                ],
                 params=None,
                 tables=["__tree"],
                 order_by=(

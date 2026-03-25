@@ -20,6 +20,9 @@ Next version
   instance instead of in ``context.render_context``.
 - Fixed a bug where ``{% recursetree %}`` inside a ``{% for %}`` loop would
   render only the first queryset's children for all iterations (#104).
+- Fixed compatibility with Django main (6.1+) which now quotes all SQL
+  identifiers including table aliases; tree querysets used as subqueries (e.g.
+  ``filter(pk__in=node.descendants())``) no longer fail on PostgreSQL.
 - Added Python 3.14 and Django 6.0 to the CI matrix; dropped intermediate
   non-LTS versions (Django 4.1, 5.0, 5.1 and Python 3.11) while retaining
   old-but-still-used versions (Python 3.8, Django 3.2).
