@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.24 (2026-03-25)
+~~~~~~~~~~~~~~~~~
+
 **Breaking changes:**
 
 - ``tree_fields()`` now raises ``ValueError`` when attempting to use the model's
