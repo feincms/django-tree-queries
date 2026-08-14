@@ -523,7 +523,11 @@ class TreeCompiler(SQLCompiler):
                 select_params=None,
                 where=[
                     "__tree.tree_pk = {}.{}".format(
-                        self.quote_name_unless_alias(tree_params["db_table"]),
+                        # quote_name_unless_alias() was deprecated in favor of
+                        # quote_name() in Django 6.1.
+                        self.quote_name(tree_params["db_table"])
+                        if django.VERSION >= (6, 1)
+                        else self.quote_name_unless_alias(tree_params["db_table"]),
                         qn(tree_params["pk"]),
                     )
                 ],
