@@ -31,7 +31,7 @@ repos:
         args: [--unsafe]
         verbose: true
   - repo: https://github.com/tox-dev/pyproject-fmt
-    rev: v2.27.1
+    rev: v2.28.0
     hooks:
       - id: pyproject-fmt
   - repo: https://github.com/abravalheri/validate-pyproject
