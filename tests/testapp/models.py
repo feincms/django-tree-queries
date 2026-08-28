@@ -146,3 +146,14 @@ class OrderedModel(OrderableTreeNode):
 
     def __str__(self):
         return self.name
+
+
+class DbColumnOrderedModel(TreeNode):
+    name = models.CharField(max_length=100)
+    sort_order = models.PositiveIntegerField(default=0, db_column="sort_col")
+
+    class Meta:
+        ordering = ("sort_order",)
+
+    def __str__(self):
+        return self.name

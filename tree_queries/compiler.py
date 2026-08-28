@@ -436,7 +436,10 @@ class TreeCompiler(SQLCompiler):
                 order_field = sibling_order[0]
             else:
                 order_field = sibling_order
-            params["order_field"] = order_field
+            # The simple CTE references the column directly on the base
+            # table, so we need the actual DB column name, not the field's
+            # (possibly different) attribute name.
+            params["order_field"] = opts.get_field(order_field).column
             rank_table_params = []
 
         # Set database-specific CTE template and column reference format
@@ -474,12 +477,22 @@ class TreeCompiler(SQLCompiler):
             # Simple CTE uses direct table references
             column_ref_format = "T.{column}"
 
+        # The simple CTE references columns directly on the base table, so it
+        # needs the actual DB column names, not the fields' (possibly
+        # different) attribute names. The rank table already exposes its
+        # columns using the tree_fields attribute names (see
+        # tree_fields_columns above), so no translation is needed there.
+        def _resolved_column(column):
+            return column if use_rank_table else opts.get_field(column).column
+
         # Generate unified tree field parameters
         params.update({
             "tree_fields_names": "".join(f"{qn(name)}, " for name in tree_fields),
             "tree_fields_initial": "".join(
                 cte_initial.format(
-                    column=column_ref_format.format(column=qn(column)),
+                    column=column_ref_format.format(
+                        column=qn(_resolved_column(column))
+                    ),
                     name=qn(name),
                     sep=SEPARATOR,
                 )
@@ -487,7 +500,9 @@ class TreeCompiler(SQLCompiler):
             ),
             "tree_fields_recursive": "".join(
                 cte_recursive.format(
-                    column=column_ref_format.format(column=qn(column)),
+                    column=column_ref_format.format(
+                        column=qn(_resolved_column(column))
+                    ),
                     name=qn(name),
                     sep=SEPARATOR,
                 )

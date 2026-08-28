@@ -7,6 +7,10 @@ Next version
 - Avoided the ``SQLCompiler.quote_name_unless_alias()`` deprecation warning on
   Django 6.1+ by using the new ``quote_name()`` method instead (#120).
 - Added Django 6.1 to the CI matrix.
+- Fixed a bug where the rank-table-skipping query optimization referenced
+  fields by their Python attribute name instead of their actual database
+  column, breaking sibling ordering and ``tree_fields()`` for fields with a
+  custom ``db_column``.
 
 0.24 (2026-03-25)
 ~~~~~~~~~~~~~~~~~

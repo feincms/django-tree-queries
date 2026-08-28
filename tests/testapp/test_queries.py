@@ -11,6 +11,7 @@ from django.test import TestCase
 from testapp.models import (
     AlwaysTreeQueryModel,
     AlwaysTreeQueryModelCategory,
+    DbColumnOrderedModel,
     InheritChildModel,
     InheritConcreteGrandChildModel,
     InheritGrandChildModel,
@@ -1073,6 +1074,29 @@ class TestTreeQueries:
 
         child2_2 = next(obj for obj in results if obj.name == "2-2")
         assert child2_2.tree_names == ["root", "2", "2-2"]
+
+    def test_optimization_with_db_column_order_field(self):
+        """
+        The rank-table-skipping optimization must resolve the sibling order
+        field to its actual DB column, not assume the column name matches the
+        field's attribute name (regression test, the field uses
+        ``db_column="sort_col"``).
+        """
+        root = DbColumnOrderedModel.objects.create(name="root")
+        DbColumnOrderedModel.objects.create(name="child", parent=root)
+        results = list(DbColumnOrderedModel.objects.with_tree_fields())
+        assert [obj.name for obj in results] == ["root", "child"]
+
+    def test_optimization_with_db_column_tree_field(self):
+        """
+        Same as above but for a custom ``tree_fields()`` column: the simple
+        CTE path must use the field's DB column, not its attribute name.
+        """
+        root = DbColumnOrderedModel.objects.create(name="root", sort_order=1)
+        DbColumnOrderedModel.objects.create(name="child", parent=root, sort_order=2)
+        results = list(DbColumnOrderedModel.objects.tree_fields(orders="sort_order"))
+        by_name = {obj.name: obj.orders for obj in results}
+        assert by_name == {"root": [1], "child": [1, 2]}
 
     def test_tree_fields_with_pk_field(self):
         """Test that using the primary key field in tree_fields raises a helpful error"""
