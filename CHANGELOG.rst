@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.25 (2026-08-28)
+~~~~~~~~~~~~~~~~~
+
 - Avoided the ``SQLCompiler.quote_name_unless_alias()`` deprecation warning on
   Django 6.1+ by using the new ``quote_name()`` method instead (#120).
 - Added Django 6.1 to the CI matrix.
