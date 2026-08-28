@@ -41,6 +41,13 @@ Add entries for user-visible changes under the `Next version` heading in
 `CHANGELOG.rst`, following the existing style (plain RST bullet points, no
 date).
 
+## Committing
+
+Commit feature by feature (one logical change per commit, not one giant
+commit at the end of a session). Do not add AI attribution (no
+`Co-Authored-By` trailer, no "Generated with Claude Code" line, etc.) to
+commit messages.
+
 ## GitHub Issues
 
 Commit messages that start with `Fix #123: ` or `Fixes #123: ` will
