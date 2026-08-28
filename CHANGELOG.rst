@@ -11,6 +11,12 @@ Next version
   fields by their Python attribute name instead of their actual database
   column, breaking sibling ordering and ``tree_fields()`` for fields with a
   custom ``db_column``.
+- Fixed ``TreeAdmin``'s "move as last child" and "move to root" actions:
+  they reset ``position_field`` to ``0`` and relied on the model's ``save()``
+  to recompute a correct position, which only ``OrderableTreeNode`` does.
+  For plain ``TreeNode`` subclasses with a ``position_field`` this silently
+  moved the node to the *first* position instead of the last. The position
+  is now computed explicitly, matching the other move actions.
 
 0.24 (2026-03-25)
 ~~~~~~~~~~~~~~~~~

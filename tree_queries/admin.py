@@ -10,7 +10,7 @@ from django.contrib.admin.options import (
 )
 from django.core import checks
 from django.core.exceptions import ValidationError
-from django.db.models import F
+from django.db.models import F, Max
 from django.http import HttpResponse
 from django.urls import path
 from django.utils.html import format_html, format_html_join, mark_safe
@@ -337,15 +337,23 @@ class MoveNodeForm(forms.Form):
             move.save()
 
         elif position == "last-child" and position_field:
-            setattr(
-                move, position_field, 0
-            )  # Let model's save method handle the position
+            max_position = (
+                siblings_qs.exclude(pk=move.pk).aggregate(m=Max(position_field))["m"]
+                or 0
+            )
+            setattr(move, position_field, max_position + 10)
             move.save()
 
         elif position in {"child", "root"}:
             # Parent already set above, just save
             if position_field and position == "root":
-                setattr(move, position_field, 0)  # Let model handle positioning
+                max_position = (
+                    siblings_qs.exclude(pk=move.pk).aggregate(m=Max(position_field))[
+                        "m"
+                    ]
+                    or 0
+                )
+                setattr(move, position_field, max_position + 10)
             move.save()
 
         else:  # pragma: no cover

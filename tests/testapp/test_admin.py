@@ -336,6 +336,11 @@ class MoveOperationTestCase(TestCase):
 
     def test_move_last_child(self):
         """Test moving a node as last child."""
+        # root already has child1 (order 10) and child2 (order 20); new_child
+        # must end up ordered after both of them, not before (regression
+        # test: "last-child" used to reset position to 0, which put the node
+        # first instead of last for models without OrderableTreeNode-style
+        # auto-positioning on save()).
         new_child = models.Model.objects.create(name="new_child", order=100)
 
         admin = ModelAdmin(models.Model, self.site)
@@ -357,8 +362,46 @@ class MoveOperationTestCase(TestCase):
         # Refresh from database
         new_child.refresh_from_db()
 
-        # Should be child of root
+        # Should be child of root, ordered after the pre-existing children
         assert new_child.parent == self.root
+        assert list(
+            models.Model.objects
+            .filter(parent=self.root)
+            .order_by("order")
+            .values_list("name", flat=True)
+        ) == ["child1", "child2", "child3", "new_child"]
+
+    def test_move_to_root_with_ordering(self):
+        """
+        Moving a node to root on a model with a position_field must append
+        it after existing root-level siblings, not reset its position to 0
+        (regression test, see test_move_last_child).
+        """
+        models.Model.objects.create(name="other_root", order=20)
+
+        admin = ModelAdmin(models.Model, self.site)
+        request = self.factory.post(
+            "/admin/testapp/model/move-node/",
+            {
+                "move": self.child1.pk,
+                "position": "root",
+            },
+        )
+        request = self.setup_request(request)
+
+        form = MoveNodeForm(request.POST, modeladmin=admin, request=request)
+        result = form.process()
+
+        assert result == "ok"
+
+        self.child1.refresh_from_db()
+        assert self.child1.parent is None
+        assert list(
+            models.Model.objects
+            .filter(parent=None)
+            .order_by("order")
+            .values_list("name", flat=True)
+        ) == ["root", "other_root", "child1"]
 
     def test_move_to_root_without_ordering(self):
         """Test moving a node to root level when no ordering is available."""
