@@ -284,6 +284,12 @@ class TestTreeQueries:
         )
         assert not hasattr(obj, "tree_depth")
 
+    def test_revert_without_tree_fields(self):
+        """without_tree_fields() is a no-op if there are no tree fields"""
+        tree = self.create_tree()
+        obj = Model.objects.without_tree_fields().get(pk=tree.root.pk)
+        assert not hasattr(obj, "tree_depth")
+
     def test_form_field(self):
         tree = self.create_tree()
 

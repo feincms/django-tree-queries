@@ -28,7 +28,7 @@ class TreeQuerySet(models.QuerySet):
         if tree_fields:
             self.query.__class__ = TreeQuery
             self.query._setup_query()
-        else:
+        elif isinstance(self.query, TreeQuery):
             self.query.remove_tree_annotations()
             self.query.__class__ = Query
         return self
