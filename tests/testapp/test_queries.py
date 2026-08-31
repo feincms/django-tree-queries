@@ -1,8 +1,9 @@
+import pickle
 from types import SimpleNamespace
 
 import pytest
 from django import forms
-from django.core.exceptions import ValidationError
+from django.core.exceptions import FieldError, ValidationError
 from django.db import connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
@@ -166,6 +167,12 @@ class TestTreeQueries:
         # OperationalError subclass.
         with pytest.raises(Exception, match="__tree"):
             tree.root.descendants().update(name="test")
+
+    def test_update_with_tree_field_filter(self):
+        """UpdateQuery does not work with tree queries, tree field filters incl."""
+        self.create_tree()
+        with pytest.raises(Exception, match="__tree"):
+            Model.objects.with_tree_fields().filter(tree_depth=0).update(name="test")
 
     def test_update_descendants_with_filter(self):
         """Updating works when using a filter"""
@@ -692,6 +699,115 @@ class TestTreeQueries:
                 tree_names__contains="2"
             )
         ) == [tree.child2, tree.child2_1, tree.child2_2]
+
+    def test_tree_fields_replaced(self):
+        """Calling tree_fields() again drops the tree fields it replaces"""
+        tree = self.create_tree()
+
+        nodes = Model.objects.tree_fields(tree_names="name").tree_fields(
+            tree_orders="order"
+        )
+        assert [node.tree_orders for node in nodes][:2] == [[0], [0, 0]]
+        assert not hasattr(nodes[0], "tree_names")
+
+        # Not just unavailable as an attribute, but gone from the query: a
+        # leftover annotation would produce SQL referencing a column which the
+        # CTE does not have.
+        with pytest.raises(FieldError, match="Cannot resolve keyword 'tree_names'"):
+            list(
+                Model.objects
+                .tree_fields(tree_names="name")
+                .tree_fields(tree_orders="order")
+                .filter(tree_names__contains="root")
+            )
+
+        with pytest.raises(FieldError, match="Cannot resolve keyword 'tree_names'"):
+            list(
+                Model.objects
+                .tree_fields(tree_names="name")
+                .tree_fields()
+                .filter(tree_names__contains=tree.root.name)
+            )
+
+    def test_tree_ordering_is_not_filterable(self):
+        """tree_ordering's representation isn't part of the API, so don't
+        pretend it can be filtered"""
+        tree = self.create_tree()
+
+        with pytest.raises(FieldError, match="Filtering 'tree_ordering'"):
+            list(
+                Model.objects.with_tree_fields().filter(
+                    tree_ordering__contains=tree.root.pk
+                )
+            )
+
+    def test_tree_path_contains_instance(self):
+        """tree_path__contains accepts nodes, not just primary keys"""
+        tree = self.create_tree()
+
+        assert list(
+            Model.objects.with_tree_fields().filter(tree_path__contains=tree.child2)
+        ) == list(
+            Model.objects.with_tree_fields().filter(tree_path__contains=tree.child2.pk)
+        )
+
+    def test_pickle_queryset(self):
+        """Tree fields are annotations now, so they have to survive pickling"""
+        tree = self.create_tree()
+
+        queryset = Model.objects.tree_fields(tree_names="name")
+        nodes = pickle.loads(pickle.dumps(queryset))
+        assert [node.tree_depth for node in nodes] == [0, 1, 2, 1, 2, 2]
+        assert nodes[2].tree_names == ["root", "1", "1-1"]
+
+        # Pickling the result cache too.
+        list(queryset)
+        assert [node.tree_names for node in pickle.loads(pickle.dumps(queryset))][
+            :2
+        ] == [["root"], ["root", "1"]]
+
+        node = pickle.loads(
+            pickle.dumps(Model.objects.with_tree_fields().get(pk=tree.child2_1.pk))
+        )
+        assert node.tree_depth == 2
+
+    def test_tree_fields_in_subqueries(self):
+        tree = self.create_tree()
+
+        # The tree fields are not in the SELECT clause of a subquery unless
+        # they are requested explicitly.
+        assert list(
+            Model.objects.filter(
+                pk__in=Model.objects.with_tree_fields().filter(tree_depth=1)
+            )
+        ) == [tree.child1, tree.child2]
+
+        # ... but they can be selected explicitly.
+        assert dict(
+            Model.objects.annotate(
+                depth=models.Subquery(
+                    Model.objects
+                    .with_tree_fields()
+                    .filter(pk=models.OuterRef("pk"))
+                    .values("tree_depth")[:1]
+                )
+            ).values_list("name", "depth")
+        ) == {"root": 0, "1": 1, "1-1": 2, "2": 1, "2-1": 2, "2-2": 2}
+
+    def test_group_by_tree_depth(self):
+        self.create_tree()
+
+        assert list(
+            Model.objects
+            .with_tree_fields()
+            .values("tree_depth")
+            .annotate(count=Count("*"))
+            .order_by("tree_depth")
+        ) == [
+            {"tree_depth": 0, "count": 1},
+            {"tree_depth": 1, "count": 2},
+            {"tree_depth": 2, "count": 3},
+        ]
 
     def test_values_with_tree_fields(self):
         tree = self.create_tree()

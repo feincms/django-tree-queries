@@ -262,8 +262,13 @@ The tree fields are queryset annotations, which means you can use them in
     Node.objects.with_tree_fields().values("name", "tree_depth")
 
     # All descendants of a node, including itself; this is what
-    # .descendants(node, include_self=True) does
-    Node.objects.with_tree_fields().filter(tree_path__contains=node.pk)
+    # .descendants(node, include_self=True) does. Either a node or a primary
+    # key can be used
+    Node.objects.with_tree_fields().filter(tree_path__contains=node)
+
+``tree_depth`` and ``tree_path`` can be filtered; ``tree_ordering`` cannot,
+since the way sibling ordering values are encoded isn't part of the public API.
+It can be used for ordering, of course.
 
 The key difference between ``tree_path`` and ``tree_ordering``:
 
@@ -398,15 +403,20 @@ UPDATE queries on tree querysets
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Updating all descendants directly isn't supported because the recursive CTE isn't
-added to the UPDATE query correctly. Use a subquery workaround instead:
+added to the UPDATE query correctly. The same goes for updating a queryset which
+has been filtered by a tree field. Use a subquery workaround instead:
 
 .. code-block:: python
 
     # Doesn't work:
     node.descendants().update(is_active=False)
+    Node.objects.with_tree_fields().filter(tree_depth=0).update(is_active=False)
 
     # Use this workaround instead:
     Node.objects.filter(pk__in=node.descendants()).update(is_active=False)
+    Node.objects.filter(
+        pk__in=Node.objects.with_tree_fields().filter(tree_depth=0)
+    ).update(is_active=False)
 
 select_related() with tree fields
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

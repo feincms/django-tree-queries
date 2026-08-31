@@ -1,5 +1,5 @@
 import django
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, FieldError
 from django.db import connections
 from django.db.models import Expression, F, Field, IntegerField, QuerySet, Value, Window
 from django.db.models.expressions import RawSQL
@@ -23,7 +23,10 @@ class TreeArrayField(Field):
     ``descendants()`` used to add using ``.extra(where=[...])``.
     """
 
-    def __init__(self, *args, source_field=None, **kwargs):
+    def __init__(self, *args, column_name=None, source_field=None, **kwargs):
+        self.column_name = column_name
+        # The model field whose values the tree column contains, or None if the
+        # column doesn't hold plain field values.
         self.source_field = source_field
         super().__init__(*args, **kwargs)
 
@@ -51,8 +54,17 @@ class TreeArrayContains(Lookup):
     prepare_rhs = False
 
     def _rhs(self, connection):
-        source_field = self.lhs.output_field.source_field
-        return source_field.get_db_prep_value(self.rhs, connection, prepared=False)
+        output_field = self.lhs.output_field
+        if output_field.source_field is None:
+            raise FieldError(
+                f"Filtering '{output_field.column_name}' is not supported; its"
+                f" representation is not part of the public API."
+            )
+        # Accept model instances, not just primary keys.
+        value = getattr(self.rhs, "pk", self.rhs)
+        return output_field.source_field.get_db_prep_value(
+            value, connection, prepared=False
+        )
 
     def as_sql(self, compiler, connection):
         # MySQL/MariaDB and sqlite3 do not support arrays; the tree columns are
@@ -170,18 +182,32 @@ class TreeQuery(Query):
         added to the SELECT clause by the compiler though (see
         ``TreeCompiler.as_sql``) since we do not always want them there.
         """
+        names = self.tree_column_names()
+
+        # Drop tree columns which are no longer part of the query, e.g. after
+        # calling tree_fields() a second time with different names. Leaving
+        # them around would produce SQL referencing columns the CTE doesn't
+        # have.
+        self.remove_tree_annotations(keep=names)
+
         opts = _find_tree_model(self.model)._meta
-        for name in self.tree_column_names():
+        for name in names:
             if name in self.annotations:
                 continue
             if name == "tree_depth":
                 output_field = IntegerField()
+            elif name == "tree_ordering":
+                # tree_ordering contains sibling ordering values, possibly from
+                # more than one field and possibly transformed (see the CTE
+                # templates), so there is no single source field for it.
+                output_field = TreeArrayField(column_name=name)
             elif name in self.tree_fields:
                 output_field = TreeArrayField(
-                    source_field=opts.get_field(self.tree_fields[name])
+                    column_name=name,
+                    source_field=opts.get_field(self.tree_fields[name]),
                 )
-            else:  # tree_path, tree_ordering
-                output_field = TreeArrayField(source_field=opts.pk)
+            else:  # tree_path
+                output_field = TreeArrayField(column_name=name, source_field=opts.pk)
             # select=False: only the compiler decides whether the tree columns
             # end up in the SELECT clause.
             self.add_annotation(TreeColumn(name, output_field), name, select=False)
@@ -195,11 +221,15 @@ class TreeQuery(Query):
             self.append_annotation_mask(promote)
         return super().set_values(fields)
 
-    def remove_tree_annotations(self):
-        names = self.tree_column_names()
+    def remove_tree_annotations(self, keep=()):
+        names = [
+            name
+            for name, annotation in self.annotations.items()
+            if isinstance(annotation, TreeColumn) and name not in keep
+        ]
         for name in names:
-            self.annotations.pop(name, None)
-        if self.annotation_select_mask is not None:
+            del self.annotations[name]
+        if names and self.annotation_select_mask is not None:
             self.set_annotation_mask(set(self.annotation_select_mask).difference(names))
 
     def get_compiler(self, using=None, connection=None, **kwargs):

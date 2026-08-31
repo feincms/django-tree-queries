@@ -29,6 +29,10 @@ Next version
   ``tree_ordering`` values on all backends now, not just on PostgreSQL.
 - ``descendants()`` passes the primary key as a bound parameter instead of
   interpolating it into the SQL string.
+- ``tree_depth`` and ``tree_path`` can be filtered, ``tree_ordering`` cannot:
+  the encoding of sibling ordering values isn't part of the public API, so
+  filtering it raises a ``FieldError`` instead of silently returning nothing.
+- ``tree_path__contains`` accepts nodes as well as primary keys.
 
 0.25 (2026-08-28)
 ~~~~~~~~~~~~~~~~~
