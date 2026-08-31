@@ -29,6 +29,7 @@ class TreeQuerySet(models.QuerySet):
             self.query.__class__ = TreeQuery
             self.query._setup_query()
         else:
+            self.query.remove_tree_annotations()
             self.query.__class__ = Query
         return self
 
@@ -92,6 +93,7 @@ class TreeQuerySet(models.QuerySet):
                 )
 
         self.query.tree_fields = tree_fields
+        self.query.add_tree_annotations()
         return self
 
     @classmethod
