@@ -101,23 +101,16 @@ class TreeJoin:
     def relabeled_clone(self, change_map):
         return self.__class__(self.pk_col.relabeled_clone(change_map))
 
-    @property
-    def identity(self):
-        return (self.__class__, self.table_name, self.parent_alias)
-
-    def __eq__(self, other):
-        if not isinstance(other, TreeJoin):
-            return NotImplemented
-        return self.identity == other.identity
-
-    def __hash__(self):
-        return hash(self.identity)
+    # relabeled_clone() above and demote()/promote() below are part of the
+    # interface, but unreachable in practice: we only add ourselves to the
+    # alias map while generating the SQL, long after Django is done rewriting
+    # aliases and promoting joins.
 
     def demote(self):
         return self
 
     def promote(self):
-        # Never promote to a LEFT OUTER JOIN; the tree fields always exist.
+        # Never promote to a LEFT OUTER JOIN; a node always has a tree row.
         return self
 
 
