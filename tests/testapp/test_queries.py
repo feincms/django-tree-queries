@@ -366,6 +366,19 @@ class TestTreeQueries:
 
     def test_bfs_ordering(self):
         tree = self.create_tree()
+        nodes = Model.objects.with_tree_fields().order_by("tree_depth", "tree_ordering")
+        assert list(nodes) == [
+            tree.root,
+            tree.child1,
+            tree.child2,
+            tree.child1_1,
+            tree.child2_1,
+            tree.child2_2,
+        ]
+
+    def test_bfs_ordering_using_extra(self):
+        """The old .extra() recipe still works"""
+        tree = self.create_tree()
         nodes = Model.objects.with_tree_fields().extra(
             order_by=["__tree.tree_depth", "__tree.tree_ordering"]
         )
@@ -377,6 +390,20 @@ class TestTreeQueries:
             tree.child2_1,
             tree.child2_2,
         ]
+
+    def test_order_by_overrides_tree_ordering(self):
+        tree = self.create_tree()
+        nodes = Model.objects.with_tree_fields().order_by("-name")
+        assert list(nodes) == [
+            tree.root,
+            tree.child2_2,
+            tree.child2_1,
+            tree.child2,
+            tree.child1_1,
+            tree.child1,
+        ]
+        # The tree fields are still there.
+        assert [node.tree_depth for node in nodes] == [0, 2, 2, 1, 2, 1]
 
     def test_always_tree_query(self):
         AlwaysTreeQueryModel.objects.create(name="Nothing")
@@ -609,6 +636,27 @@ class TestTreeQueries:
     def test_depth_filter(self):
         tree = self.create_tree()
 
+        nodes = Model.objects.with_tree_fields().filter(tree_depth__range=(0, 1))
+        assert list(nodes) == [
+            tree.root,
+            tree.child1,
+            # tree.child1_1,
+            tree.child2,
+            # tree.child2_1,
+            # tree.child2_2,
+        ]
+
+        assert list(Model.objects.with_tree_fields().filter(tree_depth__lte=1)) == list(
+            nodes
+        )
+        assert list(Model.objects.with_tree_fields().filter(tree_depth=0)) == [
+            tree.root
+        ]
+
+    def test_depth_filter_using_extra(self):
+        """The old .extra() recipe still works"""
+        tree = self.create_tree()
+
         nodes = Model.objects.with_tree_fields().extra(
             where=["__tree.tree_depth between %s and %s"],
             params=[0, 1],
@@ -621,6 +669,60 @@ class TestTreeQueries:
             # tree.child2_1,
             # tree.child2_2,
         ]
+
+    def test_tree_path_contains(self):
+        tree = self.create_tree()
+
+        assert list(
+            Model.objects.with_tree_fields().filter(tree_path__contains=tree.child2.pk)
+        ) == [tree.child2, tree.child2_1, tree.child2_2]
+
+        # This is what descendants() uses.
+        assert list(tree.child2.descendants(include_self=True)) == [
+            tree.child2,
+            tree.child2_1,
+            tree.child2_2,
+        ]
+
+    def test_filter_custom_tree_field(self):
+        tree = self.create_tree()
+
+        assert list(
+            Model.objects.tree_fields(tree_names="name").filter(
+                tree_names__contains="2"
+            )
+        ) == [tree.child2, tree.child2_1, tree.child2_2]
+
+    def test_values_with_tree_fields(self):
+        tree = self.create_tree()
+
+        # Tree fields are not included unless requested explicitly.
+        assert set(Model.objects.with_tree_fields().values()[0]) == {
+            "custom_id",
+            "parent_id",
+            "name",
+            "order",
+        }
+
+        assert list(Model.objects.with_tree_fields().values("name", "tree_depth")) == [
+            {"name": "root", "tree_depth": 0},
+            {"name": "1", "tree_depth": 1},
+            {"name": "1-1", "tree_depth": 2},
+            {"name": "2", "tree_depth": 1},
+            {"name": "2-1", "tree_depth": 2},
+            {"name": "2-2", "tree_depth": 2},
+        ]
+
+        assert list(
+            Model.objects.with_tree_fields().values_list("tree_depth", flat=True)
+        ) == [0, 1, 2, 1, 2, 2]
+
+        assert list(
+            Model.objects
+            .with_tree_fields()
+            .filter(pk=tree.child2_1.pk)
+            .values_list("tree_path", flat=True)
+        ) == [[tree.root.pk, tree.child2.pk, tree.child2_1.pk]]
 
     @pytest.mark.postgresql
     @pytest.mark.skipif(
