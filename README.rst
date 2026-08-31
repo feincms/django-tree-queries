@@ -467,15 +467,16 @@ Union, intersection, and difference operations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Set operations like ``union()``, ``intersection()``, and ``difference()`` are not
-currently supported with tree querysets due to how Django passes the ``elide_empty``
-parameter. Attempting to use these operations will result in errors.
+supported with tree querysets: the recursive common table expression can only be
+added at the very start of a SQL statement, not inside the compound statement
+which those operations generate. Using them raises a ``NotSupportedError``.
 
 .. code-block:: python
 
     # This doesn't work:
     qs1 = Node.objects.with_tree_fields().filter(name__startswith="A")
     qs2 = Node.objects.with_tree_fields().filter(name__startswith="B")
-    combined = qs1.union(qs2)  # Will raise an error
+    combined = qs1.union(qs2)  # Raises NotSupportedError
 
 **Workaround:** Use regular Django querysets without tree fields, then add tree
 fields after the set operation:

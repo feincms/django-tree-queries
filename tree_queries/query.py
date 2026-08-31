@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import NotSupportedError, models
 from django.db.models.sql.query import Query
 
 from tree_queries.compiler import TreeQuery
@@ -38,6 +38,21 @@ class TreeQuerySet(models.QuerySet):
         Requests no tree fields on this queryset
         """
         return self.with_tree_fields(tree_fields=False)
+
+    def _combinator_query(self, combinator, *other_qs, all=False):  # noqa: A002
+        if any(isinstance(queryset.query, TreeQuery) for queryset in (self, *other_qs)):
+            # The recursive CTE can only be added at the very start of a SQL
+            # statement, not inside the compound statement which union() and
+            # friends generate. Without this check the error is a confusing
+            # syntax error from the database (or worse, a TypeError from
+            # get_compiler()).
+            raise NotSupportedError(
+                f"{combinator}() is not supported for tree queries. Perform the"
+                f" set operation on querysets without tree fields and add the"
+                f" tree fields afterwards:"
+                f" Model.objects.with_tree_fields().filter(pk__in=combined)"
+            )
+        return super()._combinator_query(combinator, *other_qs, all=all)
 
     def order_siblings_by(self, *order_by):
         """

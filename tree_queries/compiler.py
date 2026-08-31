@@ -232,7 +232,7 @@ class TreeQuery(Query):
         if names and self.annotation_select_mask is not None:
             self.set_annotation_mask(set(self.annotation_select_mask).difference(names))
 
-    def get_compiler(self, using=None, connection=None, **kwargs):
+    def get_compiler(self, using=None, connection=None, *args, **kwargs):
         # Copied from django/db/models/sql/query.py
         if using is None and connection is None:
             raise ValueError("Need either using or connection")
@@ -241,8 +241,9 @@ class TreeQuery(Query):
         # Difference: Not connection.ops.compiler, but our own compiler which
         # adds the CTE.
 
-        # **kwargs passes on elide_empty from Django 4.0 onwards
-        return TreeCompiler(self, connection, using, **kwargs)
+        # *args and **kwargs pass on elide_empty, which Django 4.0 and better
+        # sometimes pass positionally (see SQLCompiler.get_combinator_sql()).
+        return TreeCompiler(self, connection, using, *args, **kwargs)
 
     def get_sibling_order(self):
         return self.sibling_order

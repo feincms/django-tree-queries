@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 from django import forms
 from django.core.exceptions import FieldError, ValidationError
-from django.db import connections, models
+from django.db import NotSupportedError, connections, models
 from django.db.models import Count, Q, Sum
 from django.db.models.expressions import RawSQL
 from django.test import TestCase
@@ -813,6 +813,42 @@ class TestTreeQueries:
             {"tree_depth": 0, "count": 1},
             {"tree_depth": 1, "count": 2},
             {"tree_depth": 2, "count": 3},
+        ]
+
+    def test_set_operations_not_supported(self):
+        """union() and friends cannot work: the CTE has to come first"""
+        tree = self.create_tree()
+
+        with_fields = Model.objects.with_tree_fields()
+        without_fields = Model.objects.all()
+
+        cases = [
+            lambda: with_fields.union(with_fields),
+            lambda: with_fields.intersection(with_fields),
+            lambda: with_fields.difference(with_fields),
+            lambda: with_fields.union(without_fields),
+            lambda: without_fields.union(with_fields),
+        ]
+        for case in cases:
+            with pytest.raises(
+                NotSupportedError, match="not supported for tree queries"
+            ):
+                case()
+
+        # The documented workaround, and the escape hatch, keep working.
+        combined = (
+            Model.objects
+            .order_by()
+            .union(Model.objects.without_tree_fields().order_by())
+            .values_list("pk", flat=True)
+        )
+        assert list(Model.objects.with_tree_fields().filter(pk__in=combined)) == [
+            tree.root,
+            tree.child1,
+            tree.child1_1,
+            tree.child2,
+            tree.child2_1,
+            tree.child2_2,
         ]
 
     def test_values_with_tree_fields(self):

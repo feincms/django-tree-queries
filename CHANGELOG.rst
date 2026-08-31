@@ -33,6 +33,10 @@ Next version
   the encoding of sibling ordering values isn't part of the public API, so
   filtering it raises a ``FieldError`` instead of silently returning nothing.
 - ``tree_path__contains`` accepts nodes as well as primary keys.
+- ``union()``, ``intersection()`` and ``difference()`` raise a
+  ``NotSupportedError`` explaining the problem and the workaround instead of
+  failing with a confusing ``TypeError`` from ``get_compiler()`` (or, once that
+  was fixed, with a SQL syntax error).
 
 0.25 (2026-08-28)
 ~~~~~~~~~~~~~~~~~
