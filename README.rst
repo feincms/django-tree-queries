@@ -65,10 +65,11 @@ Usage
 - Call the ``with_tree_fields()`` queryset method if you require the
   additional fields respectively the CTE.
 - Call the ``order_siblings_by("field_name")`` queryset method if you want to
-  order tree siblings by a specific model field. Note that Django's standard
-  ``order_by()`` method isn't supported -- nodes are returned according to the
-  `depth-first search algorithm
-  <https://en.wikipedia.org/wiki/Depth-first_search>`__.
+  order tree siblings by a specific model field. By default, nodes are returned
+  according to the `depth-first search algorithm
+  <https://en.wikipedia.org/wiki/Depth-first_search>`__; an explicit
+  ``order_by()`` replaces that ordering (which generally means you're no longer
+  getting a tree, just a list of nodes with tree fields attached).
 - Use ``tree_filter()`` and ``tree_exclude()`` for better performance when
   working with large tables - these filter the base table before building
   the tree structure.
@@ -245,6 +246,24 @@ When using ``with_tree_fields()``, each node gets three additional attributes:
   the current node itself, representing the path from root to current node
 - **``tree_ordering``**: An array containing the ordering/ranking values used
   for sibling ordering at each level of the tree hierarchy
+
+The tree fields are queryset annotations, which means you can use them in
+``filter()``, ``exclude()``, ``order_by()`` and ``values()`` calls:
+
+.. code-block:: python
+
+    # Only the top three levels
+    Node.objects.with_tree_fields().filter(tree_depth__lte=2)
+
+    # Breadth-first instead of depth-first
+    Node.objects.with_tree_fields().order_by("tree_depth", "tree_ordering")
+
+    # Dictionaries instead of model instances
+    Node.objects.with_tree_fields().values("name", "tree_depth")
+
+    # All descendants of a node, including itself; this is what
+    # .descendants(node, include_self=True) does
+    Node.objects.with_tree_fields().filter(tree_path__contains=node.pk)
 
 The key difference between ``tree_path`` and ``tree_ordering``:
 
@@ -467,22 +486,16 @@ For more details and discussion about adding support for these operations, see
 Limiting tree depth
 ^^^^^^^^^^^^^^^^^^^
 
-To limit the depth of the tree returned by a query, use ``.extra()`` with a
-``WHERE`` clause on the ``tree_depth`` field:
+The tree fields are annotations, so the depth can be filtered as any other
+field:
 
 .. code-block:: python
 
     # Get only nodes up to depth 2 (root is depth 0)
-    nodes = Node.objects.with_tree_fields().extra(
-        where=["__tree.tree_depth <= %s"],
-        params=[2],
-    )
+    nodes = Node.objects.with_tree_fields().filter(tree_depth__lte=2)
 
     # Get nodes within a depth range
-    nodes = Node.objects.with_tree_fields().extra(
-        where=["__tree.tree_depth BETWEEN %s AND %s"],
-        params=[1, 3],  # Only depths 1, 2, and 3
-    )
+    nodes = Node.objects.with_tree_fields().filter(tree_depth__range=(1, 3))
 
 Limiting children per node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -578,9 +591,7 @@ as follows:
 
 .. code-block:: python
 
-    nodes = Node.objects.with_tree_fields().extra(
-        order_by=["__tree.tree_depth", "__tree.tree_ordering"]
-    )
+    nodes = Node.objects.with_tree_fields().order_by("tree_depth", "tree_ordering")
 
 
 Filter by depth
@@ -590,35 +601,23 @@ If you only want nodes from the top two levels:
 
 .. code-block:: python
 
-    nodes = Node.objects.with_tree_fields().extra(
-        where=["__tree.tree_depth <= %s"],
-        params=[1],
-    )
+    nodes = Node.objects.with_tree_fields().filter(tree_depth__lte=1)
 
 
 Using tree fields with values()
 --------------------------------
 
-By default, ``.values()`` only returns model fields, not tree fields. If you need
-tree fields in a ``.values()`` call, you can access them using ``RawSQL``:
+By default, ``.values()`` only returns model fields, not tree fields. Tree
+fields have to be requested explicitly:
 
 .. code-block:: python
 
-    from django.db.models.expressions import RawSQL
-
     # Include tree fields in values() output
-    data = Node.objects.with_tree_fields().values(
-        "name",
-        tree_depth=RawSQL("tree_depth", ()),
-        tree_path=RawSQL("tree_path", ()),
-    )
+    data = Node.objects.with_tree_fields().values("name", "tree_depth", "tree_path")
     # Returns: [{'name': 'root', 'tree_depth': 0, 'tree_path': [1]}, ...]
 
 **Important caveats:**
 
-- **PostgreSQL only**: ``tree_path`` returns a proper array only on PostgreSQL.
-  Other databases return the internal string representation used by
-  django-tree-queries (subject to change).
 - **Not guaranteed stable**: The internal representation of tree fields may change
   in future versions. Avoid relying on the exact format of these values in
   application logic.
@@ -635,7 +634,7 @@ attributes on model instances rather than through ``.values()``:
     nodes = Node.objects.with_tree_fields()
     for node in nodes:
         depth = node.tree_depth
-        path = node.tree_path  # Consistent across all databases
+        path = node.tree_path
 
     # Only use RawSQL with values() when you need dictionary output
     data = Node.objects.with_tree_fields().values(
@@ -823,9 +822,7 @@ filtered or limited querysets:
 .. code-block:: python
 
     # Only nodes up to depth 2
-    limited_nodes = Node.objects.with_tree_fields().extra(
-        where=["__tree.tree_depth <= %s"], params=[2]
-    )
+    limited_nodes = Node.objects.with_tree_fields().filter(tree_depth__lte=2)
 
     # Only specific branches
     branch_nodes = Node.objects.descendants(some_node, include_self=True)

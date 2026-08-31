@@ -4,6 +4,32 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Stopped using ``QuerySet.extra()``: Django is going to deprecate its
+  ``select``, ``where`` and ``order_by`` arguments (`django/django#16681
+  <https://github.com/django/django/pull/16681>`__). The tree fields are
+  queryset annotations now and the ``__tree`` CTE is joined using a real
+  ``INNER JOIN``.
+- Tree fields can be used in ``filter()``, ``exclude()``, ``order_by()`` and
+  ``values()`` calls now, which replaces the ``.extra()`` recipes for limiting
+  the tree depth and for breadth-first search::
+
+      # Was: .extra(where=["__tree.tree_depth <= %s"], params=[2])
+      Node.objects.with_tree_fields().filter(tree_depth__lte=2)
+
+      # Was: .extra(order_by=["__tree.tree_depth", "__tree.tree_ordering"])
+      Node.objects.with_tree_fields().order_by("tree_depth", "tree_ordering")
+
+      # Was: .values("name", tree_depth=RawSQL("tree_depth", ()))
+      Node.objects.with_tree_fields().values("name", "tree_depth")
+
+  ``.extra()`` keeps working for now, so there's no need to rush.
+- **Backwards incompatible**: An explicit ``order_by()`` now replaces the
+  depth-first tree ordering instead of being silently ignored.
+- ``.values()`` and ``.values_list()`` return converted ``tree_path`` and
+  ``tree_ordering`` values on all backends now, not just on PostgreSQL.
+- ``descendants()`` passes the primary key as a bound parameter instead of
+  interpolating it into the SQL string.
+
 0.25 (2026-08-28)
 ~~~~~~~~~~~~~~~~~
 
