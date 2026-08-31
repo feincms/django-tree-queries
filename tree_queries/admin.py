@@ -393,8 +393,8 @@ class AncestorFilter(SimpleListFilter):
     def lookups(self, request, model_admin):
         return [
             (node.id, format_html("{} {}", self.indent(node.tree_depth), node))
-            for node in model_admin.model._default_manager.with_tree_fields().extra(
-                where=[f"tree_depth <= {self.max_depth}"]
+            for node in model_admin.model._default_manager.with_tree_fields().filter(
+                tree_depth__lte=self.max_depth
             )
         ]
 

@@ -1,7 +1,7 @@
-from django.db import connections, models
+from django.db import models
 from django.db.models.sql.query import Query
 
-from tree_queries.compiler import SEPARATOR, TreeQuery
+from tree_queries.compiler import TreeQuery
 
 
 def pk(of):
@@ -126,7 +126,7 @@ class TreeQuerySet(models.QuerySet):
             self
             .with_tree_fields()  # TODO tree fields not strictly required
             .filter(pk__in=ids)
-            .extra(order_by=["__tree.tree_depth"])
+            .order_by("tree_depth")
         )
 
     def descendants(self, of, *, include_self=False):
@@ -134,22 +134,7 @@ class TreeQuerySet(models.QuerySet):
         Returns descendants of the given node in depth-first order, optionally
         including and starting with the node itself
         """
-        connection = connections[self.db]
-        if connection.vendor == "postgresql":
-            queryset = self.with_tree_fields().extra(
-                where=["%s = ANY(__tree.tree_path)"],
-                params=[self.model._meta.pk.get_db_prep_value(pk(of), connection)],
-            )
-
-        else:
-            queryset = self.with_tree_fields().extra(
-                # NOTE! The representation of tree_path is NOT part of the API.
-                where=[
-                    # XXX This *may* be unsafe with some primary key field types.
-                    # It is certainly safe with integers.
-                    f'instr(__tree.tree_path, "{SEPARATOR}{self.model._meta.pk.get_db_prep_value(pk(of), connection)}{SEPARATOR}") <> 0'
-                ]
-            )
+        queryset = self.with_tree_fields().filter(tree_path__contains=pk(of))
 
         if not include_self:
             return queryset.exclude(pk=pk(of))
