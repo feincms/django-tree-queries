@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.26a1 (2026-08-31)
+~~~~~~~~~~~~~~~~~~~
+
 - Stopped using ``QuerySet.extra()``: Django might deprecate its
   ``select``, ``where`` and ``order_by`` arguments (`django/django#16681
   <https://github.com/django/django/pull/16681>`__). The tree fields are
