@@ -136,6 +136,7 @@ from django.contrib import admin
 from tree_queries.admin import TreeAdmin
 from .models import Category
 
+
 @admin.register(Category)
 class CategoryAdmin(TreeAdmin):
     list_display = [*TreeAdmin.list_display, "name", "is_active"]

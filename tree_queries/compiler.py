@@ -157,7 +157,7 @@ class TreeQuery(Query):
         if not hasattr(self, "sibling_order"):
             # Add an attribute to control the ordering of siblings within trees
             opts = _find_tree_model(self.model)._meta
-            self.sibling_order = opts.ordering if opts.ordering else opts.pk.attname
+            self.sibling_order = opts.ordering or opts.pk.attname
 
         # Only add the rank_table_query attribute if the query doesn't already have one to preserve cloning behavior
         if not hasattr(self, "rank_table_query"):
