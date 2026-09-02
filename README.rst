@@ -954,6 +954,10 @@ The ``TreeAdmin`` provides:
 - Set ``position_field`` to the field name used for positioning siblings (e.g., ``"position"``, ``"order"``)
 - Leave ``position_field = None`` for trees positioned by other criteria (pk, name, etc.)
 - The admin automatically adapts its interface based on whether positioning is controllable
+- The changelist is ordered depth-first, whatever the model's
+  ``Meta.ordering`` is; setting ``ordering`` on your ``TreeAdmin`` subclass or
+  sorting by clicking a column header still wins, but produces a flat list
+  where the indentation and the move controls no longer make sense
 
 **Required list_display columns:**
 

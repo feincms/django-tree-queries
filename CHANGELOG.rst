@@ -4,6 +4,15 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Fixed ``TreeAdmin``'s changelist ordering: the tree fields refactoring in
+  0.26a1 made explicit ``order_by()`` calls win over the depth-first ordering,
+  and the admin changelist always orders explicitly (by the model's
+  ``Meta.ordering``, or by ``-pk``). The tree was shown as a flat list, which
+  made the indentation, the collapsing and the move controls useless. The
+  changelist orders by the ``tree_ordering`` annotation again unless an
+  ordering has been requested explicitly, either by setting ``ordering`` on the
+  ``ModelAdmin`` or by clicking a column header.
+
 0.26a1 (2026-08-31)
 ~~~~~~~~~~~~~~~~~~~
 

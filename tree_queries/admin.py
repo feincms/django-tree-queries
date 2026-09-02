@@ -8,6 +8,7 @@ from django.contrib.admin.options import (
     IncorrectLookupParameters,
     csrf_protect_m,
 )
+from django.contrib.admin.views.main import ORDER_VAR, ChangeList
 from django.core import checks
 from django.core.exceptions import ValidationError
 from django.db.models import F, Max
@@ -34,6 +35,28 @@ MOVE_POSITIONS = {
 MOVE_POSITIONS_PARENT_ONLY = {
     "child": _("as child"),
 }
+
+
+class TreeChangeList(ChangeList):
+    """
+    Changelist which shows the tree depth-first.
+
+    The changelist is only useful if nodes appear directly below their parent:
+    the indentation, the collapsing and the move actions all depend on it. The
+    model's ``Meta.ordering`` (or the ``-pk`` fallback which Django adds when
+    the ordering isn't deterministic) would produce a flat list, so the
+    depth-first tree ordering wins over both. Ordering explicitly, either by
+    setting ``ordering`` on the ``ModelAdmin`` or by clicking a column header,
+    still works.
+    """
+
+    def get_ordering(self, request, queryset):
+        if self.model_admin.get_ordering(request) or self.params.get(ORDER_VAR):
+            return super().get_ordering(request, queryset)
+        # tree_ordering is a tree field annotation; it cannot be used as
+        # ``ModelAdmin.ordering`` since the admin checks and the related field
+        # widgets only know about real model fields.
+        return ["tree_ordering"]
 
 
 class TreeAdmin(ModelAdmin):
@@ -102,6 +125,9 @@ class TreeAdmin(ModelAdmin):
         return {
             "initiallyCollapseDepth": 1,
         }
+
+    def get_changelist(self, request, **kwargs):
+        return TreeChangeList
 
     def get_queryset(self, request):
         return self.model._default_manager.with_tree_fields()

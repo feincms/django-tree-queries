@@ -207,6 +207,77 @@ class TreeAdminTestCase(TestCase):
         )
         assert not form.is_valid()
 
+    def test_changelist_ordering_is_depth_first(self):
+        """The changelist shows the tree depth-first, not by ``Meta.ordering``."""
+        # Ordering by "order" alone would put the grandchild first
+        models.Model.objects.filter(pk=self.grandchild.pk).update(order=1)
+
+        modeladmin = ModelAdmin(models.Model, self.site)
+        request = self.setup_request(self.factory.get("/"))
+        changelist = modeladmin.get_changelist_instance(request)
+
+        assert [obj.name for obj in changelist.get_queryset(request)] == [
+            "root",
+            "child1",
+            "grandchild",
+            "child2",
+        ]
+
+    def test_changelist_ordering_without_position_field(self):
+        """Models without a position field are shown depth-first too."""
+        other = models.UnorderedModel.objects.create(name="other")
+        models.UnorderedModel.objects.create(name="other child", parent=other)
+
+        modeladmin = UnorderedModelAdmin(models.UnorderedModel, self.site)
+        request = self.setup_request(self.factory.get("/"))
+        changelist = modeladmin.get_changelist_instance(request)
+
+        assert [obj.name for obj in changelist.get_queryset(request)] == [
+            "root",
+            "child",
+            "other",
+            "other child",
+        ]
+
+    def test_admin_checks_pass(self):
+        """The tree ordering doesn't trip up the admin checks (admin.E033)."""
+        assert ModelAdmin(models.Model, self.site).check() == []
+
+    def test_explicit_ordering_wins(self):
+        """An ordering set on the ``ModelAdmin`` is used as-is."""
+
+        class OrderedByNameAdmin(ModelAdmin):
+            ordering = ["-name"]
+
+        modeladmin = OrderedByNameAdmin(models.Model, self.site)
+        request = self.setup_request(self.factory.get("/"))
+        changelist = modeladmin.get_changelist_instance(request)
+
+        assert [obj.name for obj in changelist.get_queryset(request)] == [
+            "root",
+            "grandchild",
+            "child2",
+            "child1",
+        ]
+
+    def test_sorting_by_column_wins(self):
+        """Clicking a column header sorts the changelist by that column."""
+        modeladmin = ModelAdmin(models.Model, self.site)
+        request = self.setup_request(self.factory.get("/"))
+        columns = modeladmin.get_changelist_instance(request).list_display
+
+        request = self.setup_request(
+            self.factory.get("/", {"o": str(columns.index("name"))})
+        )
+        changelist = modeladmin.get_changelist_instance(request)
+
+        assert [obj.name for obj in changelist.get_queryset(request)] == [
+            "child1",
+            "child2",
+            "grandchild",
+            "root",
+        ]
+
 
 class MoveOperationTestCase(TestCase):
     def setUp(self):
