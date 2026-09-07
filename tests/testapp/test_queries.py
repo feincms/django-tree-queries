@@ -1193,6 +1193,31 @@ class TestTreeQueries:
         # ids = [obj.tree_pks for obj in Model.objects.tree_fields(tree_pks="parent_id")]
         # self.assertEqual(ids[0], [""])
 
+    def test_tree_fields_with_null_value(self):
+        """A NULL source column doesn't crash from_db_value() (#126)"""
+        category = AlwaysTreeQueryModelCategory.objects.create()
+        root = AlwaysTreeQueryModel.objects.create(name="root")
+        child = AlwaysTreeQueryModel.objects.create(
+            name="child", parent=root, category=category
+        )
+        AlwaysTreeQueryModel.objects.create(name="grandchild", parent=child)
+
+        qs = AlwaysTreeQueryModel.objects.tree_fields(tree_category="category")
+        categories = {obj.name: obj.tree_category for obj in qs}
+
+        if connections[AlwaysTreeQueryModel.objects.db].vendor == "postgresql":
+            # Native arrays keep NULL as None among otherwise-int elements.
+            assert categories["root"] == [None]
+            assert categories["child"] == [None, category.pk]
+            assert categories["grandchild"] == [None, category.pk, None]
+        else:
+            # MySQL/sqlite join the values into a separator-delimited string
+            # and can't tell NULL apart from an empty string there, so the
+            # whole (non-int) list is returned as-is instead of crashing.
+            assert categories["root"] == [""]
+            assert categories["child"] == ["", str(category.pk)]
+            assert categories["grandchild"] == ["", str(category.pk), ""]
+
     def test_invalid_sibling_order_type(self):
         """Test that invalid sibling order types raise TypeError"""
         self.create_tree()

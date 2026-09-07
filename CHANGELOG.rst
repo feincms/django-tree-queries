@@ -4,6 +4,14 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Fixed a crash in ``TreeArrayField.from_db_value()`` when a nullable field is
+  used as a custom tree field (``tree_fields()``) or as the sibling ordering
+  field and has a ``NULL`` value: MySQL/MariaDB's ``CONCAT()`` propagates
+  ``NULL`` through the whole tree column once one is encountered, and
+  PostgreSQL's native arrays keep the ``NULL`` as an element. Both cases
+  crashed ``from_db_value()`` since it assumed every element could be
+  converted to ``int``.
+
 
 0.26 (2026-09-07)
 ~~~~~~~~~~~~~~~~~

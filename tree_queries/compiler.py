@@ -31,6 +31,10 @@ class TreeArrayField(Field):
         super().__init__(*args, **kwargs)
 
     def from_db_value(self, value, expression, connection):
+        if value is None:
+            # A nullable source column can make the whole value NULL (#126).
+            return None
+
         if isinstance(value, str):
             # MySQL/MariaDB and sqlite3 do not support arrays. Split the value
             # on the ASCII unit separator (chr(31)).
@@ -38,9 +42,9 @@ class TreeArrayField(Field):
             value = value.split(SEPARATOR)[1:-1]
 
         try:
-            # Either all values are convertible to int or don't bother
-            return [int(v) for v in value]  # Maybe Field.to_python()?
-        except ValueError:
+            # None stays None; otherwise all values convertible to int or don't bother.
+            return [None if v is None else int(v) for v in value]
+        except (TypeError, ValueError):
             return value
 
 
@@ -410,7 +414,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             {tree_fields_initial}0,
             CAST(CONCAT("{sep}", T.{pk}, "{sep}") AS char(1000)),
-            CAST(CONCAT("{sep}", LPAD(CONCAT(T.`{order_field}`, "{sep}"), 20, "0")) AS char(1000)),
+            CAST(CONCAT("{sep}", LPAD(CONCAT(IFNULL(T.`{order_field}`, ""), "{sep}"), 20, "0")) AS char(1000)),
             T.{pk}
         FROM {db_table} T
         WHERE T.`{parent}` IS NULL
@@ -420,7 +424,7 @@ class TreeCompiler(SQLCompiler):
         SELECT
             {tree_fields_recursive}__tree.tree_depth + 1,
             CONCAT(__tree.tree_path, T.{pk}, "{sep}"),
-            CONCAT(__tree.tree_ordering, LPAD(CONCAT(T.`{order_field}`, "{sep}"), 20, "0")),
+            CONCAT(__tree.tree_ordering, LPAD(CONCAT(IFNULL(T.`{order_field}`, ""), "{sep}"), 20, "0")),
             T.{pk}
         FROM {db_table} T, __tree
         WHERE __tree.tree_pk = T.`{parent}`
@@ -653,8 +657,11 @@ class TreeCompiler(SQLCompiler):
             cte_recursive = '__tree.{name} || printf("%%s{sep}", {column}), '
         elif self.connection.vendor == "mysql":
             cte = self.CTE_MYSQL_SIMPLE if not use_rank_table else self.CTE_MYSQL
-            cte_initial = 'CAST(CONCAT("{sep}", {column}, "{sep}") AS char(1000)), '
-            cte_recursive = 'CONCAT(__tree.{name}, {column}, "{sep}"), '
+            # IFNULL avoids CONCAT() nulling the whole value on a NULL column (#126).
+            cte_initial = (
+                'CAST(CONCAT("{sep}", IFNULL({column}, ""), "{sep}") AS char(1000)), '
+            )
+            cte_recursive = 'CONCAT(__tree.{name}, IFNULL({column}, ""), "{sep}"), '
 
         tree_fields = self.query.get_tree_fields()
         qn = self.connection.ops.quote_name
