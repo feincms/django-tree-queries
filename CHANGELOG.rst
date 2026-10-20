@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.27 (2026-10-20)
+~~~~~~~~~~~~~~~~~
+
 - Dropped support for Django < 4.2 and Python < 3.10.
 - Switched ``TreeAdmin`` from the deprecated ``JS(src, {...})`` form of
   django-js-asset to ``Script(src, **attrs)``. The ``admin`` extra now requires
