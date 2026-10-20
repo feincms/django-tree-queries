@@ -100,7 +100,7 @@ class TreeAdmin(ModelAdmin):
 
     @csrf_protect_m
     def changelist_view(self, request, **kwargs):
-        from js_asset.js import JS  # noqa: PLC0415
+        from js_asset import Script  # noqa: PLC0415
 
         response = super().changelist_view(request, **kwargs)
         if not hasattr(response, "context_data"):
@@ -113,9 +113,10 @@ class TreeAdmin(ModelAdmin):
                 ]
             },
             js=[
-                JS(
+                Script(
                     "tree_queries/tree_admin.js",
-                    {"id": "tree-admin-context", "data-context": json.dumps(context)},
+                    id="tree-admin-context",
+                    **{"data-context": json.dumps(context)},
                 ),
             ],
         )

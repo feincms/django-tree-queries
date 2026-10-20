@@ -11,7 +11,7 @@ table expressions. Supports PostgreSQL, sqlite3 (3.8.3 or higher) and
 MariaDB (10.2.2 or higher) and MySQL (8.0 or higher, if running without
 ``ONLY_FULL_GROUP_BY``).
 
-Supports Django 3.2 or better, Python 3.8 or better. See the GitHub actions
+Supports Django 4.2 or better, Python 3.10 or better. See the GitHub actions
 build for more details.
 
 Features and limitations

@@ -4,6 +4,10 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Dropped support for Django < 4.2 and Python < 3.10.
+- Switched ``TreeAdmin`` from the deprecated ``JS(src, {...})`` form of
+  django-js-asset to ``Script(src, **attrs)``. The ``admin`` extra now requires
+  ``django-js-asset>=4.0``.
 - Fixed a crash in ``TreeArrayField.from_db_value()`` when a nullable field is
   used as a custom tree field (``tree_fields()``) or as the sibling ordering
   field and has a ``NULL`` value: MySQL/MariaDB's ``CONCAT()`` propagates

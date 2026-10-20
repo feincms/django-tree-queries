@@ -1,7 +1,6 @@
-import django
 from django.core.exceptions import FieldDoesNotExist, FieldError
 from django.db import connections
-from django.db.models import Expression, F, Field, IntegerField, QuerySet, Value, Window
+from django.db.models import Field, IntegerField, QuerySet, Value, Window
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import RowNumber
 from django.db.models.lookups import Lookup
@@ -536,20 +535,6 @@ class TreeCompiler(SQLCompiler):
             raise TypeError(
                 "Sibling order must be a string or a list or tuple of strings."
             )
-
-        # Convert strings to expressions. This is to maintain backwards compatibility
-        # with Django versions < 4.1
-        if django.VERSION < (4, 1):
-            base_order = []
-            for field in order_fields:
-                if isinstance(field, Expression):
-                    base_order.append(field)
-                elif isinstance(field, str):
-                    if field[0] == "-":
-                        base_order.append(F(field[1:]).desc())
-                    else:
-                        base_order.append(F(field).asc())
-            order_fields = base_order
 
         # Get the rank table query
         rank_table_query = self.query.get_rank_table_query()
