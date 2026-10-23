@@ -210,6 +210,20 @@ class TreeAdmin(ModelAdmin):
             options,
         )
 
+    def is_valid_move(self, request, node, *, parent, after):
+        """
+        Return whether ``node`` may be moved to the given location
+
+        ``parent`` is the parent ``node`` would have after the move, ``None``
+        if it would become a root node. ``after`` is the sibling ``node``
+        would be placed after, ``None`` if it would become the first child of
+        ``parent`` (or the first root node). Without ``position_field`` the
+        order of siblings isn't controllable and ``after`` is always ``None``.
+
+        The default implementation allows all moves.
+        """
+        return True
+
     def get_urls(self):
         """
         Add our own ``move`` view.
@@ -307,12 +321,54 @@ class MoveNodeForm(forms.Form):
                 _("A target node is required for this move position.")
             )
 
+        move = cleaned_data.get("move")
+        if move and position:
+            parent, after = self._new_location(move, position, relative_to)
+            if not self.modeladmin.is_valid_move(
+                self.request, move, parent=parent, after=after
+            ):
+                raise forms.ValidationError(
+                    _("'{}' cannot be moved to this location.").format(move)
+                )
+
         return cleaned_data
+
+    def _new_location(self, move, position, relative_to):
+        """
+        Return the new parent of ``move`` and the sibling it will follow
+        """
+        if position == "root":
+            parent = None
+        elif position in {"first-child", "last-child", "child"}:
+            parent = relative_to
+        else:
+            parent = relative_to.parent
+
+        position_field = self.modeladmin.position_field
+        if not position_field or position in {"first-child", "child"}:
+            return parent, None
+        if position == "after":
+            return parent, relative_to
+
+        siblings = (
+            move.__class__._default_manager
+            .filter(parent=parent)
+            .exclude(pk=move.pk)
+            .order_by(f"-{position_field}")
+        )
+        if position == "before":
+            siblings = siblings.filter(**{
+                f"{position_field}__lt": getattr(relative_to, position_field)
+            })
+        # "before": the previous sibling, "last-child" and "root": the last one
+        return parent, siblings.first()
 
     def process(self):
         if not self.is_valid():
             messages.error(self.request, _("Invalid node move request."))
-            messages.error(self.request, str(self.errors))
+            for errors in self.errors.values():
+                for error in errors:
+                    messages.error(self.request, error)
             return "error"
 
         move = self.cleaned_data["move"]

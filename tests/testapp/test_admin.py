@@ -524,3 +524,81 @@ class MoveOperationTestCase(TestCase):
 
         # Should now be child of root2
         assert child.parent == root2
+
+    def test_is_valid_move(self):
+        """TreeAdmin.is_valid_move receives the new location and can veto moves."""
+        calls = []
+
+        class RestrictedAdmin(ModelAdmin):
+            def is_valid_move(self, request, node, *, parent, after):
+                calls.append((node, parent, after))
+                # No new root nodes
+                return parent is not None
+
+        admin = RestrictedAdmin(models.Model, self.site)
+
+        def move(**data):
+            request = self.setup_request(
+                self.factory.post("/admin/testapp/model/move-node/", data)
+            )
+            return MoveNodeForm(request.POST, modeladmin=admin, request=request)
+
+        root, child1, child2, child3 = self.root, self.child1, self.child2, self.child3
+
+        form = move(move=child2.pk, position="root")
+        assert form.process() == "error"
+        assert calls[-1] == (child2, None, root)
+        assert [str(m) for m in form.request._messages] == [
+            "Invalid node move request.",
+            "'child2' cannot be moved to this location.",
+        ]
+
+        form = move(move=child2.pk, relative_to=root.pk, position="after")
+        assert form.process() == "error"
+        assert calls[-1] == (child2, None, root)
+
+        form = move(move=child3.pk, relative_to=child1.pk, position="before")
+        assert form.is_valid()
+        assert calls[-1] == (child3, root, None)
+
+        form = move(move=child3.pk, relative_to=child2.pk, position="before")
+        assert form.is_valid()
+        assert calls[-1] == (child3, root, child1)
+
+        form = move(move=child1.pk, relative_to=root.pk, position="last-child")
+        assert form.is_valid()
+        assert calls[-1] == (child1, root, child3)
+
+        form = move(move=child2.pk, relative_to=child1.pk, position="first-child")
+        assert form.process() == "ok"
+        assert calls[-1] == (child2, child1, None)
+
+        child2.refresh_from_db()
+        assert child2.parent == child1
+
+    def test_is_valid_move_without_ordering(self):
+        """Without position_field, after is always None."""
+        calls = []
+
+        class RestrictedAdmin(UnorderedModelAdmin):
+            def is_valid_move(self, request, node, *, parent, after):
+                calls.append((node, parent, after))
+                return True
+
+        admin = RestrictedAdmin(models.UnorderedModel, self.site)
+        root = models.UnorderedModel.objects.create(name="root")
+        child = models.UnorderedModel.objects.create(name="child", parent=root)
+        other = models.UnorderedModel.objects.create(name="other")
+
+        for data, expected in [
+            ({"position": "root"}, (child, None, None)),
+            ({"position": "child", "relative_to": other.pk}, (child, other, None)),
+        ]:
+            request = self.setup_request(
+                self.factory.post("/admin/testapp/unorderedmodel/move-node/", {})
+            )
+            form = MoveNodeForm(
+                {"move": child.pk, **data}, modeladmin=admin, request=request
+            )
+            assert form.is_valid()
+            assert calls[-1] == expected

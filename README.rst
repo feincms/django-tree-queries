@@ -967,6 +967,22 @@ The ``TreeAdmin`` provides:
 
 These are included by default in ``TreeAdmin.list_display``.
 
+**Restricting moves:**
+
+Override ``TreeAdmin.is_valid_move`` to restrict where nodes may be moved.
+It receives the request, the node being moved, its new ``parent`` (``None``
+when it would become a root node) and the sibling it would be placed
+``after`` (``None`` when it would become the first child, and always ``None``
+without ``position_field``). Rejected moves aren't performed and the reason
+is shown as an error message:
+
+.. code-block:: python
+
+    class CategoryAdmin(TreeAdmin):
+        def is_valid_move(self, request, node, *, parent, after):
+            # Only superusers may create new root nodes
+            return parent is not None or request.user.is_superuser
+
 
 Migrating from django-mptt
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~

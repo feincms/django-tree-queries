@@ -83,6 +83,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (result === "ok") {
           setMoving({ ..._moving, highlight: true })
           window.location.reload()
+        } else if (result === "error") {
+          // The reason has been added to the messages framework
+          setMoving(null)
+          window.location.reload()
         } else {
           throw new Error("Move operation failed")
         }
