@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.28 (2026-10-23)
+~~~~~~~~~~~~~~~~~
+
 - Added ``TreeAdmin.is_valid_move()`` which can be overridden to restrict
   where nodes may be moved in the admin. Rejected moves now show their
   validation errors as individual messages and reload the changelist instead
