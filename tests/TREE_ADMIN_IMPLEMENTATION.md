@@ -9,18 +9,21 @@ Added a comprehensive TreeAdmin class for Django admin that provides intuitive t
 ## Key Features Implemented
 
 ### 1. TreeAdmin Class (`tree_queries/admin.py`)
+
 - **Base class**: Extends Django's `ModelAdmin`
 - **Configuration**: `position_field = None` (set to field name for controllable positioning)
 - **Automatic adaptation**: Interface changes based on whether positioning is controllable
 - **List display columns**: `collapse_column`, `indented_title`, `move_column`
 
 ### 2. Tree Visualization
+
 - **Hierarchical display**: Unicode box-drawing characters for tree structure
 - **Collapsible nodes**: Click to expand/collapse branches
 - **Depth indication**: Visual indentation and depth-based styling
 - **Row highlighting**: Different background colors by tree depth
 
 ### 3. Node Moving System
+
 - **Cut/paste workflow**: Click cut button, select destination from dropdown
 - **Position options** (when positioning is controllable):
   - `before`: Move before another sibling
@@ -33,6 +36,7 @@ Added a comprehensive TreeAdmin class for Django admin that provides intuitive t
   - `root`: Move to root level
 
 ### 4. Smart Interface Adaptation
+
 - **With position field**: Shows full move options (before, after, first-child, last-child)
 - **Without position field**: Shows simplified options (child, root) + direct root button
 - **Visual state management**: Uses `data-move` attribute for CSS state control
@@ -40,6 +44,7 @@ Added a comprehensive TreeAdmin class for Django admin that provides intuitive t
 ## Technical Implementation
 
 ### JavaScript (`tree_queries/static/tree_queries/tree_admin.js`)
+
 - **Tree collapsing**: Recursive node visibility management
 - **Move state management**: Session storage persistence across page reloads
 - **Fetch API integration**: Consolidated `performMove()` function for all move operations
@@ -47,6 +52,7 @@ Added a comprehensive TreeAdmin class for Django admin that provides intuitive t
 - **Button behavior**: Smart mode switching between regular and root moves
 
 ### CSS (`tree_queries/static/tree_queries/tree_admin.css`)
+
 - **Tree visualization**: Box-drawing characters and indentation
 - **State management**: Data attribute selectors (`body[data-move="root"]`)
 - **Button styling**: Inline SVG icons from Material Design
@@ -54,6 +60,7 @@ Added a comprehensive TreeAdmin class for Django admin that provides intuitive t
 - **Responsive design**: Works with Django admin's responsive layout
 
 ### Form Validation (`MoveNodeForm`)
+
 - **Dynamic field setup**: Adapts to admin's position_field configuration
 - **Position validation**: Ensures valid moves based on tree constraints
 - **Error handling**: Clear validation messages for invalid operations
@@ -79,6 +86,7 @@ tests/testapp/
 ## Dependencies and Installation
 
 ### Package Configuration (`pyproject.toml`)
+
 ```toml
 dependencies = []  # Core package has no dependencies
 
@@ -96,6 +104,7 @@ optional-dependencies.tests = [
 ```
 
 ### Installation
+
 ```bash
 # Core functionality only
 pip install django-tree-queries
@@ -108,10 +117,12 @@ pip install django-tree-queries[tests]
 ```
 
 ### CI/CD Configuration
+
 - **tox.ini**: Added `django-js-asset` to test dependencies
 - **GitHub Actions**: Uses tox for cross-platform testing
 
 ### Running Tests
+
 ```bash
 # Run tests for specific Python/Django combination
 tox -e py313-dj52-sqlite
@@ -131,6 +142,7 @@ tox -e py313-dj52-sqlite -- tests/testapp/test_admin.py::TreeAdminTestCase::test
 ## Usage Examples
 
 ### Basic TreeAdmin
+
 ```python
 from django.contrib import admin
 from tree_queries.admin import TreeAdmin
@@ -144,6 +156,7 @@ class CategoryAdmin(TreeAdmin):
 ```
 
 ### Unpositioned Trees
+
 ```python
 @admin.register(Department)
 class DepartmentAdmin(TreeAdmin):
@@ -154,12 +167,14 @@ class DepartmentAdmin(TreeAdmin):
 ## Test Coverage
 
 ### Test Suite (`tests/testapp/test_admin.py`)
+
 - **12 comprehensive test cases**
 - **Coverage**: Form validation, move operations, UI adaptation
 - **Test classes**: `TreeAdminTestCase`, `MoveOperationTestCase`
 - **Scenarios**: Both positioned and unpositioned tree models
 
 ### Key Test Cases
+
 1. Position field configuration validation
 2. Move position options based on positioning capability
 3. Form validation for all move types
@@ -169,22 +184,26 @@ class DepartmentAdmin(TreeAdmin):
 ## Design Decisions
 
 ### 1. Terminology
+
 - **"Position" over "Ordering"**: Avoided Django's overloaded "ordering" terminology
 - **position_field**: More specific than generic "ordering_field"
 - **Positioning vs Ordering**: Clearer semantic distinction
 
 ### 2. Architecture
+
 - **Direct field access**: Removed getter methods, use `self.position_field` directly
 - **Truthiness checks**: Use `if self.position_field:` instead of `!= None`
 - **Consolidated constants**: Single source of truth for move positions
 
 ### 3. Dependencies
+
 - **Minimal core**: No dependencies for basic tree functionality
 - **Optional admin**: Admin functionality via `[admin]` extra
 - **Self-contained icons**: Inline SVG to avoid external dependencies
 - **Proper attribution**: Clear credit to Material Design icons
 
 ### 4. UX/UI
+
 - **Consistent buttons**: Status bar uses buttons for both confirm and cancel
 - **Visual feedback**: Row highlighting during moves
 - **State persistence**: Move state survives page navigation
