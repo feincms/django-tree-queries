@@ -48,7 +48,7 @@ urls.Changelog = "https://github.com/feincms/django-tree-queries/blob/main/CHANG
 urls.Documentation = "https://django-tree-queries.readthedocs.io/en/latest/"
 urls.Funding = "https://ko-fi.com/matthiask"
 urls.Issues = "https://github.com/feincms/django-tree-queries/issues"
-urls.Repository = "https://github.com/matthiask/django-tree-queries"
+urls.Repository = "https://github.com/feincms/django-tree-queries"
 
 [tool.hatch]
 version.path = "tree_queries/__init__.py"
