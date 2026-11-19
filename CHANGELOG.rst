@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.29 (2026-11-19)
+~~~~~~~~~~~~~~~~~
+
 - Added tree rules: checks of a node's place in the tree, declared as a
   ``tree_rules`` list on models and their mixins and collected along the MRO
   (``tree_queries.admin.collect_tree_rules``). A rule is a callable
