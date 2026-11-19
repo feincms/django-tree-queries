@@ -209,3 +209,17 @@ body[data-move] .move-selected .move-paste {
 #changelist tbody tr.move-highlight {
   background: var(--message-success-bg);
 }
+
+.tree-rule-violation {
+  cursor: help;
+}
+
+.tree-rule-violation .box-text::before {
+  content: "";
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  background: url("../admin/img/icon-alert.svg") no-repeat center / contain;
+}

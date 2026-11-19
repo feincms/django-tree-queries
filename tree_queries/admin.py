@@ -15,12 +15,13 @@ from django.db.models import F, Max
 from django.http import HttpResponse
 from django.urls import path
 from django.utils.html import format_html, format_html_join, mark_safe
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext, gettext_lazy as _, ngettext
 
 
 __all__ = (
     "AncestorFilter",
     "TreeAdmin",
+    "collect_tree_rules",
 )
 
 
@@ -35,6 +36,30 @@ MOVE_POSITIONS = {
 MOVE_POSITIONS_PARENT_ONLY = {
     "child": _("as child"),
 }
+
+
+def collect_tree_rules(model):
+    """
+    Return the tree rules of ``model``, gathered along its MRO
+
+    A tree rule checks a node's place in the tree: a callable
+    ``rule(node, ancestors)`` returning a message when the node breaks it and
+    ``None`` otherwise; ``ancestors`` runs from the root down to the node's
+    parent. Models and their mixins declare theirs in a ``tree_rules`` list in
+    their own class body, without repeating the rules of their bases, which
+    are collected too -- base classes first::
+
+        class Page(TreeNode, LanguageMixin):
+            tree_rules = [menu_only_on_top_levels]
+
+    ``TreeAdmin`` marks the changelist rows breaking a rule.
+    """
+    rules = []
+    for cls in reversed(model.__mro__):
+        for rule in cls.__dict__.get("tree_rules", ()):
+            if rule not in rules:
+                rules.append(rule)
+    return rules
 
 
 class TreeChangeList(ChangeList):
@@ -98,6 +123,14 @@ class TreeAdmin(ModelAdmin):
             )
         return errors
 
+    #: Tree rules checked in the changelist in addition to the model's own
+    #: (``collect_tree_rules``). Prefer declaring rules on the model; these
+    #: are for checks which only matter in this admin.
+    tree_rules = []
+
+    #: How many offending nodes the warning above the changelist names.
+    tree_rules_listed = 10
+
     @csrf_protect_m
     def changelist_view(self, request, **kwargs):
         from js_asset import Script  # noqa: PLC0415
@@ -105,6 +138,10 @@ class TreeAdmin(ModelAdmin):
         response = super().changelist_view(request, **kwargs)
         if not hasattr(response, "context_data"):
             return response
+        if "cl" in response.context_data and (rules := self.get_tree_rules(request)):
+            self.check_tree_rules(
+                request, response.context_data["cl"].result_list, rules
+            )
         context = self.tree_admin_context(request)
         response.context_data["media"] += forms.Media(
             css={
@@ -141,6 +178,63 @@ class TreeAdmin(ModelAdmin):
             instance.tree_depth,
         )
 
+    def get_tree_rules(self, request):
+        return [*collect_tree_rules(self.model), *self.tree_rules]
+
+    def check_tree_rules(self, request, nodes, rules):
+        """
+        Run ``rules`` over ``nodes``, mark offenders and warn about them
+
+        The rules only see what the changelist has loaded anyway, so checking
+        costs no queries. A node whose ancestors aren't all loaded (a filtered,
+        searched or paginated changelist) is skipped rather than judged on
+        part of its path. Offenders get a warning sign next to their title and
+        are expanded to, and a warning above the list names them.
+        """
+        nodes = list(nodes)
+        by_pk = {node.pk: node for node in nodes}
+        offenders = []
+        for node in nodes:
+            ancestors = []
+            parent_id = node.parent_id
+            while parent_id is not None:
+                if (parent := by_pk.get(parent_id)) is None:
+                    break
+                ancestors.append(parent)
+                parent_id = parent.parent_id
+            else:
+                ancestors.reverse()
+                violations = [msg for rule in rules if (msg := rule(node, ancestors))]
+                if violations:
+                    node._tree_rule_violations = violations
+                    offenders.append(node)
+
+        if offenders:
+            opts = self.model._meta
+            listed = offenders[: self.tree_rules_listed]
+            names = ", ".join(str(node) for node in listed)
+            if len(offenders) > len(listed):
+                names = gettext("{names} and {count} more").format(
+                    names=names, count=len(offenders) - len(listed)
+                )
+            messages.warning(
+                request,
+                ngettext(
+                    "%(count)s %(verbose_name)s doesn't fit its place in the"
+                    " tree, hover over its warning sign for details: %(names)s",
+                    "%(count)s %(verbose_name_plural)s don't fit their place in"
+                    " the tree, hover over their warning signs for details:"
+                    " %(names)s",
+                    len(offenders),
+                )
+                % {
+                    "count": len(offenders),
+                    "verbose_name": opts.verbose_name,
+                    "verbose_name_plural": opts.verbose_name_plural,
+                    "names": names,
+                },
+            )
+
     def indented_title(self, instance, *, ellipsize=True):
         """
         Use Unicode box-drawing characters to visualize the tree hierarchy.
@@ -151,7 +245,7 @@ class TreeAdmin(ModelAdmin):
         if instance.tree_depth > 0:
             box_drawing.append('<i class="a"></i>')
 
-        return format_html(
+        title = format_html(
             '<div class="box">'
             '<div class="box-drawing">{}</div>'
             '<div class="box-text{}" style="text-indent:{}px">{}</div>'
@@ -161,6 +255,15 @@ class TreeAdmin(ModelAdmin):
             instance.tree_depth * 30,
             instance,
         )
+        if violations := getattr(instance, "_tree_rule_violations", None):
+            title = format_html(
+                '<div class="tree-rule-violation" title="{}" data-tree-reveal>'
+                '{}<span class="visually-hidden">{}</span></div>',
+                " ".join(violations),
+                title,
+                format_html_join("", " {}", ((v,) for v in violations)),
+            )
+        return title
 
     indented_title.short_description = _("title")
 

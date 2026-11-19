@@ -4,6 +4,19 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Added tree rules: checks of a node's place in the tree, declared as a
+  ``tree_rules`` list on models and their mixins and collected along the MRO
+  (``tree_queries.admin.collect_tree_rules``). A rule is a callable
+  ``rule(node, ancestors)`` returning a message or ``None``.
+  ``TreeAdmin``'s changelist marks the rows breaking one with a warning sign,
+  expands the tree down to them and names them in a warning above the list,
+  without additional queries. ``TreeAdmin.tree_rules`` adds admin-only rules,
+  ``TreeAdmin.get_tree_rules()`` decides per request.
+- The changelist expands the path down to every row containing an element
+  with a ``data-tree-reveal`` attribute, whatever ``initiallyCollapseDepth``
+  says. Only the ancestors are expanded, not their other subtrees.
+
+
 0.28 (2026-10-23)
 ~~~~~~~~~~~~~~~~~
 

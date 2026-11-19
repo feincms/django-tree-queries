@@ -7,7 +7,12 @@ from django.test import RequestFactory, TestCase
 
 from testapp import models
 from testapp.admin import ModelAdmin, UnorderedModelAdmin
-from tree_queries.admin import MOVE_POSITIONS, MOVE_POSITIONS_PARENT_ONLY, MoveNodeForm
+from tree_queries.admin import (
+    MOVE_POSITIONS,
+    MOVE_POSITIONS_PARENT_ONLY,
+    MoveNodeForm,
+    collect_tree_rules,
+)
 
 
 class TreeAdminTestCase(TestCase):
@@ -602,3 +607,82 @@ class MoveOperationTestCase(TestCase):
             )
             assert form.is_valid()
             assert calls[-1] == expected
+
+
+def _no_grandchildren(node, ancestors):
+    return "Too deep." if len(ancestors) > 1 else None
+
+
+def _no_root_named_root(node, ancestors):
+    return "Root." if not ancestors and node.name == "root" else None
+
+
+class TreeRulesTestCase(TreeAdminTestCase):
+    def changelist(self, query=""):
+        modeladmin = ModelAdmin(models.Model, self.site)
+        request = self.setup_request(self.factory.get(f"/{query}"))
+        response = modeladmin.changelist_view(request)
+        response.render()
+        return response.content.decode(), [str(m) for m in request._messages]
+
+    def set_model_rules(self, rules):
+        models.Model.tree_rules = rules
+        self.addCleanup(delattr, models.Model, "tree_rules")
+
+    def test_collect_tree_rules_walks_the_mro(self):
+        class Mixin:
+            tree_rules = [_no_root_named_root]
+
+        class Node(Mixin):
+            tree_rules = [_no_grandchildren, _no_root_named_root]
+
+        assert collect_tree_rules(Node) == [_no_root_named_root, _no_grandchildren]
+        assert collect_tree_rules(models.Model) == []
+
+    def test_no_rules_no_marks(self):
+        content, messages = self.changelist()
+        assert "tree-rule-violation" not in content
+        assert messages == []
+
+    def test_offenders_are_marked_revealed_and_named(self):
+        self.set_model_rules([_no_grandchildren])
+
+        content, messages = self.changelist()
+
+        assert content.count('class="tree-rule-violation"') == 1
+        assert "data-tree-reveal" in content
+        assert 'title="Too deep."' in content
+        assert messages == [
+            (
+                "1 model doesn't fit its place in the tree, hover over its warning"
+                " sign for details: grandchild"
+            )
+        ]
+
+    def test_admin_rules_come_on_top_and_the_list_is_capped(self):
+        self.set_model_rules([_no_grandchildren])
+        ModelAdmin.tree_rules = [_no_root_named_root]
+        ModelAdmin.tree_rules_listed = 1
+        self.addCleanup(delattr, ModelAdmin, "tree_rules")
+        self.addCleanup(delattr, ModelAdmin, "tree_rules_listed")
+
+        content, messages = self.changelist()
+
+        assert content.count('class="tree-rule-violation"') == 2
+        assert messages == [
+            (
+                "2 models don't fit their place in the tree, hover over their"
+                " warning signs for details: root and 1 more"
+            )
+        ]
+
+    def test_nodes_without_their_ancestors_are_skipped(self):
+        # As in a filtered, searched or paginated changelist.
+        modeladmin = ModelAdmin(models.Model, self.site)
+        request = self.setup_request(self.factory.get("/"))
+        nodes = list(models.Model.objects.with_tree_fields().exclude(pk=self.child1.pk))
+
+        modeladmin.check_tree_rules(request, nodes, [_no_grandchildren])
+
+        assert not any(hasattr(node, "_tree_rule_violations") for node in nodes)
+        assert list(request._messages) == []

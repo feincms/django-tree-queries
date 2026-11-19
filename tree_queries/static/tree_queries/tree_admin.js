@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const CHILDREN = 2
   const TR = 3
   const TOGGLE = 4
+  const PARENT = 5
 
   const nodes = {}
   const parents = []
@@ -14,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const node = toggle.closest("tr")
     const pk = +toggle.dataset.pk
     const treeDepth = +toggle.dataset.treeDepth
-    const rec = [pk, treeDepth, [], node, toggle]
+    const rec = [pk, treeDepth, [], node, toggle, null]
     parents[treeDepth] = rec
     nodes[pk] = rec
 
@@ -25,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
       // parent may be on the previous page if the changelist is paginated.
       const parent = parents[treeDepth - 1]
       if (parent) {
+        rec[PARENT] = parent
         parent[CHILDREN].push(rec)
         parent[TOGGLE].classList.remove("collapse-hide")
       }
@@ -47,6 +49,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Expand the path down to a node, leaving its siblings' subtrees collapsed.
+  function reveal(rec) {
+    for (let parent = rec[PARENT]; parent; parent = parent[PARENT]) {
+      parent[TOGGLE].classList.remove("collapsed")
+      for (const child of parent[CHILDREN]) {
+        child[TR].classList.remove("collapse-hide")
+      }
+    }
+  }
+
   root.addEventListener("click", (e) => {
     const collapseToggle = e.target.closest(".collapse-toggle")
     if (collapseToggle) {
@@ -62,6 +74,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelector("#tree-admin-context").dataset.context,
   )
   initiallyCollapse(context.initiallyCollapseDepth)
+
+  // Rows which have to be seen, e.g. because they need attention.
+  for (const element of root.querySelectorAll("[data-tree-reveal]")) {
+    const rec = nodes[+element.closest("tr").dataset.pk]
+    if (rec) reveal(rec)
+  }
 })
 
 document.addEventListener("DOMContentLoaded", () => {
