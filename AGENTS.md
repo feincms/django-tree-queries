@@ -37,9 +37,10 @@ prek run --all-files
 
 ## Changelog
 
-Add entries for user-visible changes under the `Next version` heading in
-`CHANGELOG.rst`, following the existing style (plain RST bullet points, no
-date).
+Always add entries under the `Next version` heading in `CHANGELOG.rst`,
+following the existing style (plain RST bullet points, no date). This
+includes changes to supported versions, the test matrix and CI, not only
+library code.
 
 ## Committing
 
