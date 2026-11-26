@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.30.1 (2026-11-26)
+~~~~~~~~~~~~~~~~~~~
+
 - Clipped the collapse toggle in ``TreeAdmin``'s changelist to its cell. It
   overflowed the last row by a few pixels, which made the results scroll
   vertically and sometimes swallowed the page's scrolling.
