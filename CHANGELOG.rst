@@ -10,6 +10,9 @@ Next version
 - The admin CSS uses Django's admin variables for the text colour and the
   border radius of the move buttons (``--button-fg``, ``--admin-radius``), so
   that themes built on the variables apply to them too.
+- The tree lines in ``TreeAdmin``'s changelist are drawn with CSS instead of
+  box-drawing characters, so that they span the whole row whatever its
+  height and no longer leave gaps with themes using more padding.
 
 0.29 (2026-11-19)
 ~~~~~~~~~~~~~~~~~

@@ -1,31 +1,34 @@
 .box {
   white-space: nowrap;
-  position: relative;
   margin: -8px;
   overflow: hidden;
 }
 
+/* The lines span the whole cell whatever its height, so the cell is the
+   containing block. Horizontally they stay where .box starts (left: auto). */
+#result_list tr > :has(.box-drawing) {
+  position: relative;
+}
+
 .box-drawing {
   position: absolute;
-  display: inline-block;
-  font-family: monospace;
-  font-size: 28px;
-  line-height: 1.2;
-  font-weight: normal;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  --_line: linear-gradient(currentColor, currentColor) no-repeat;
+  --_x: 7px;
+  --_w: 2px;
 }
 
 .box-drawing i {
-  display: inline-block;
-  font-style: normal;
   width: 30px;
+  background: var(--_line) var(--_x) 0 / var(--_w) 100%;
 }
 
-.box-drawing i.l::after {
-  content: "\2502";
-}
-
-.box-drawing i.a::after {
-  content: "\251c";
+.box-drawing i.a {
+  background:
+    var(--_line) var(--_x) 0 / var(--_w) 100%,
+    var(--_line) var(--_x) 50% / 10px var(--_w);
 }
 
 .box-text {
