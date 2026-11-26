@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.30 (2026-11-26)
+~~~~~~~~~~~~~~~~~
+
 - Added Python 3.15 to the CI. Stopped testing Django 4.2 on Python 3.14,
   which Django 4.2 doesn't support. Each Django version is now only tested
   with the oldest and newest Python version it supports.
