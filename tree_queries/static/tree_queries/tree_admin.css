@@ -41,8 +41,11 @@
   overflow: hidden;
 }
 
+/* Clip the transformed toggle, it would otherwise overflow the last row and
+   make the changelist's .results (overflow-x: auto) scroll vertically. */
 .field-collapse_column {
   position: relative;
+  overflow: clip;
   width: 1rem;
   padding: 0 !important;
 }
