@@ -88,9 +88,9 @@
   margin-left: 10px;
   padding: 2px 6px;
   background: var(--success-fg, #28a745);
-  color: white;
+  color: var(--button-fg, white);
   border: none;
-  border-radius: 3px;
+  border-radius: var(--admin-radius, 3px);
   cursor: pointer;
   font-size: inherit;
 }
@@ -105,7 +105,7 @@
   background: none;
   color: var(--link-fg);
   border: 1px solid var(--hairline-color);
-  border-radius: 3px;
+  border-radius: var(--admin-radius, 3px);
   cursor: pointer;
   font-size: inherit;
 }

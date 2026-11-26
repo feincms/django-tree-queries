@@ -7,6 +7,9 @@ Next version
 - Added Python 3.15 to the CI. Stopped testing Django 4.2 on Python 3.14,
   which Django 4.2 doesn't support. Each Django version is now only tested
   with the oldest and newest Python version it supports.
+- The admin CSS uses Django's admin variables for the text colour and the
+  border radius of the move buttons (``--button-fg``, ``--admin-radius``), so
+  that themes built on the variables apply to them too.
 
 0.29 (2026-11-19)
 ~~~~~~~~~~~~~~~~~
